@@ -7,12 +7,12 @@ use gsm_shared::{
 use crate::parse_mod_string::parse_mod_string;
 use fs_extra::dir;
 use fs_extra::dir::CopyOptions;
-use log::{debug, error};
 use reqwest::Url;
 use std::convert::TryFrom;
 use std::fs::{File, create_dir_all};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
+use tracing::{debug, error};
 use walkdir::WalkDir;
 use zip::ZipArchive;
 

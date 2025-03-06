@@ -1,0 +1,17 @@
+[package]
+name = "gsm-instance"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+daemonize = "0"
+serde = { version = "1.0.218", features = ["derive"] }
+thiserror = "2.0.12"
+tracing = "0.1"
+tempfile = "3.17.1"
+which = "7.0.2"
+sysinfo = "0"
+regex = "1.11.1"
+strsim = "0"
+tokio = { version="1.43.0", features = ["full", "process"] }
+nix = "0.29.0"

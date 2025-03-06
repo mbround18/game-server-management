@@ -1,7 +1,7 @@
-use log::{debug, error};
 use reqwest::blocking::Client;
 use std::env::VarError;
 use std::{env, fmt};
+use tracing::{debug, error};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct IPResponse {

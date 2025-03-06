@@ -1,12 +1,12 @@
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use glob::glob;
-use log::{debug, error, info};
 use std::fs::{File, remove_file};
 use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 use tar::Builder;
 use thiserror::Error;
+use tracing::{debug, error, info};
 
 /// Custom error type for backup failures.
 #[derive(Debug, Error)]

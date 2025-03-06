@@ -1,10 +1,10 @@
 mod fetch_public_ip_address;
 
 pub use fetch_public_ip_address::*;
-use log::debug;
 use reqwest::Url;
 use std::env;
 use std::path::Path;
+use tracing::debug;
 
 mod is_valid_url;
 pub use is_valid_url::*;
