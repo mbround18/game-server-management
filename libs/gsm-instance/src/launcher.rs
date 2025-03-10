@@ -64,7 +64,7 @@ fn fine_wine() -> Result<String, String> {
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
     let mut command = if config.force_windows {
         // When force_windows is true, prefix with "wine64"
-        let mut cmd = Command::new(fine_wine().map_err(|e| InstanceError::Unknown(e))?);
+        let mut cmd = Command::new(fine_wine().map_err(InstanceError::Unknown)?);
         cmd.arg(&config.command);
         cmd
     } else {
