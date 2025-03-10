@@ -5,6 +5,8 @@ GIT_TAG := $(shell git rev-parse --short HEAD)
 lint:
 	cargo fmt
 	cargo clippy
+	@if command -v npx > /dev/null 2>&1; then npx -y prettier --write .; fi
+
 
 test: lint
 	cargo test
