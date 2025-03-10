@@ -128,6 +128,7 @@ pub struct ServerConfig {
     pub game_settings_preset: String,
     pub game_settings: GameSettings,
     pub user_groups: Vec<UserGroup>,
+    pub game_port: i32,
 }
 
 impl Default for ServerConfig {
