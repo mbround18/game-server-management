@@ -32,6 +32,7 @@ pub fn start_daemonized(config: InstanceConfig) -> Result<Child, InstanceError> 
                         .working_directory(&working_dir)
                         .stdout(stdout)
                         .stderr(stderr)
+                        .pid_file(working_dir.clone().join("instance.pid"))
                         .privileged_action(move || {
                             info!("Executing privileged actions before launching server");
                             // Return the command that will be exec'd.

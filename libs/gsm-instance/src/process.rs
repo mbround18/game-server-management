@@ -3,6 +3,28 @@ use strsim::jaro_winkler;
 use sysinfo::{Pid, Signal, System};
 use tracing::{debug, error, info}; // Fuzzy matching
 
+/// Sends an interrupt signal (SIGINT) to the process with the given PID.
+///
+/// # Parameters
+/// - `pid`: The process ID to send SIGINT to.
+pub fn send_interrupt_to_pid(pid: u32) {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+    let sys_pid = Pid::from(pid as usize);
+    if let Some(process) = sys.process(sys_pid) {
+        info!("Found process with PID: {}", pid);
+        match process.kill_with(Signal::Interrupt) {
+            Some(_) => info!("Sent interrupt signal to PID: {}", pid),
+            None => error!("Failed to send interrupt signal to PID: {}", pid),
+        }
+    } else {
+        debug!(
+            "Process with PID {} not found (it may have already stopped)",
+            pid
+        );
+    }
+}
+
 /// A struct for managing server processes.
 pub struct ServerProcess {
     system: System,
@@ -59,28 +81,6 @@ impl ServerProcess {
         !self.find_processes(executable_name).is_empty()
     }
 
-    /// Sends an interrupt signal (SIGINT) to the process with the given PID.
-    ///
-    /// # Parameters
-    /// - `pid`: The process ID to send SIGINT to.
-    pub fn send_interrupt_to_pid(pid: u32) {
-        let mut sys = System::new_all();
-        sys.refresh_all();
-        let sys_pid = Pid::from(pid as usize);
-        if let Some(process) = sys.process(sys_pid) {
-            info!("Found process with PID: {}", pid);
-            match process.kill_with(Signal::Interrupt) {
-                Some(_) => info!("Sent interrupt signal to PID: {}", pid),
-                None => error!("Failed to send interrupt signal to PID: {}", pid),
-            }
-        } else {
-            debug!(
-                "Process with PID {} not found (it may have already stopped)",
-                pid
-            );
-        }
-    }
-
     /// Sends an interrupt signal (SIGINT) to all processes whose executable path contains the given substring.
     ///
     /// # Parameters
@@ -97,7 +97,7 @@ impl ServerProcess {
         for process in processes {
             let pid = process.pid().as_u32();
             info!("Sending interrupt to process with PID: {}", pid);
-            Self::send_interrupt_to_pid(pid);
+            send_interrupt_to_pid(pid);
         }
     }
 }
@@ -159,7 +159,7 @@ mod tests {
         let mut child = spawn_dummy_process();
         let pid = child.id();
         // Send interrupt to the dummy process.
-        ServerProcess::send_interrupt_to_pid(pid);
+        send_interrupt_to_pid(pid);
         // Allow some time for the signal to be delivered.
         thread::sleep(Duration::from_secs(1));
         // Try to wait for the process.

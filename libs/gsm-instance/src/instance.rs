@@ -1,6 +1,9 @@
 use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
 use crate::{install, shutdown, startup, update};
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Child; // Using synchronous std process Child
 
@@ -75,12 +78,26 @@ impl Instance {
 
     /// Stops the server gracefully.
     pub fn stop(&self) -> Result<(), InstanceError> {
-        let file_name = std::path::Path::new(&self.config.command)
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
-        shutdown::blocking_shutdown(file_name);
+        let pid_file = self.config.working_dir.join("instance.pid");
+        if pid_file.exists() {
+            // Read the PID from the file
+            let pid = fs::read_to_string(&pid_file)
+                .map_err(|e| InstanceError::IoError(e))?
+                .trim()
+                .parse::<i32>()
+                .map_err(|e| InstanceError::ParseError(e))?;
+
+            // Send SIGINT to the process
+            signal::kill(Pid::from_raw(pid), Signal::SIGINT)
+                .map_err(|e| InstanceError::SignalError(e))?;
+        } else {
+            let file_name = std::path::Path::new(&self.config.command)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            shutdown::blocking_shutdown(file_name);
+        }
         Ok(())
     }
 
