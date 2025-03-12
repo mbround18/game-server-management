@@ -1,7 +1,10 @@
 mod environment;
 mod game_settings;
+mod utils;
+mod webhooks;
 
 use crate::environment::name;
+use crate::webhooks::{ServerEvent, send_notifications};
 use clap::{Parser, Subcommand};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
@@ -11,6 +14,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
 
@@ -112,6 +116,40 @@ async fn main() {
 
             let rules = LogRules::default();
 
+            if env::var("WEBHOOK_URL").is_ok() {
+                rules.add_rule(
+                    |line| line.contains("[Session] 'HostOnline' (up)!"),
+                    |_| {
+                        send_notifications(ServerEvent::Started)
+                            .expect("Failed to send webhook event! Invalid url?")
+                    },
+                    true,
+                    None,
+                );
+
+                rules.add_rule(
+                    |line| line.contains("logged in with Permissions:"),
+                    |line| match utils::extract_player_joined_name(line) {
+                        Some(name) => send_notifications(ServerEvent::PlayerJoined(name))
+                            .expect("Failed to send webhook event! Invalid url?"),
+                        None => error!("Failed to extract player name from:\n{line}"),
+                    },
+                    true,
+                    None,
+                );
+
+                rules.add_rule(
+                    |line| line.contains("[server] Remove Player "),
+                    |line| match utils::extract_player_left_name(line) {
+                        Some(name) => send_notifications(ServerEvent::PlayerLeft(name))
+                            .expect("Failed to send webhook event! Invalid url?"),
+                        None => error!("Failed to extract player name from:\n{line}"),
+                    },
+                    true,
+                    None,
+                );
+            }
+
             // Start monitoring the instance log files.
             gsm_monitor::start_instance_log_monitor(working_dir, rules);
 
@@ -174,13 +212,37 @@ async fn main() {
             debug!("Cron loop ended.");
         }
         Commands::Stop => {
+            let webhook_enabled = env::var("WEBHOOK_URL").is_ok();
+            if webhook_enabled {
+                if let Ok(delay_str) = env::var("STOP_DELAY") {
+                    match delay_str.parse::<u64>() {
+                        Ok(delay_sec) => {
+                            tokio::time::sleep(Duration::from_secs(delay_sec)).await;
+                        }
+                        Err(_) => {
+                            error!("Invalid STOP_DELAY value: {}", delay_str);
+                        }
+                    }
+                }
+                send_notifications(ServerEvent::Stopping)
+                    .expect("Failed to send webhook event! Invalid url?");
+            }
+
             warn!("Stopping Enshrouded server...");
             debug!("Acquiring lock to stop the server...");
+
             let inst = instance.lock().await;
-            if let Err(e) = inst.stop() {
-                error!("Failed to stop: {}", e);
-            } else {
-                debug!("Server stopped successfully.");
+            match inst.stop() {
+                Err(e) => {
+                    error!("Failed to stop: {}", e);
+                }
+                Ok(_) => {
+                    if webhook_enabled {
+                        send_notifications(ServerEvent::Stopped)
+                            .expect("Failed to send webhook event! Invalid url?");
+                    }
+                    debug!("Server stopped successfully.");
+                }
             }
         }
         Commands::Restart => {

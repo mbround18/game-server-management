@@ -113,24 +113,23 @@ impl Monitor {
 /// * `log_file` - The path to the log file to monitor.
 /// * `rules` - The set of log rules to apply.
 pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
-  let monitor = Monitor::new(rules);
-  let log_file_clone = log_file.clone();
-  let spawn_result = thread::Builder::new()
-    .name(format!("log-monitor-{}", log_file_clone.display()))
-    .spawn(move || {
-      monitor.run(log_file);
-    });
+    let monitor = Monitor::new(rules);
+    let log_file_clone = log_file.clone();
+    let spawn_result = thread::Builder::new()
+        .name(format!("log-monitor-{}", log_file_clone.display()))
+        .spawn(move || {
+            monitor.run(log_file);
+        });
 
-  match spawn_result {
-    Ok(_handle) => {
-      // Optionally, store or use _handle if you need to join later.
+    match spawn_result {
+        Ok(_handle) => {
+            // Optionally, store or use _handle if you need to join later.
+        }
+        Err(e) => {
+            error!(target: LOG_TARGET, "Failed to spawn log monitor thread: {}", e);
+        }
     }
-    Err(e) => {
-      error!(target: LOG_TARGET, "Failed to spawn log monitor thread: {}", e);
-    }
-  }
 }
-
 
 /// Starts monitoring both the server and error log files in the specified working directory.
 ///
