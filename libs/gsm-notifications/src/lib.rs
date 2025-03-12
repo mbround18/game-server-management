@@ -157,7 +157,7 @@ impl NotificationDispatcher for DiscordDispatcher {
         _data: Option<serde_json::Value>, // Extra data is ignored for Discord.
     ) -> Result<(), NotificationError> {
         let payload = DiscordWebhookBody {
-            content: format!("Notification: {}", notification_type),
+            content: format!("🔔 {notification_type}"),
             embeds: vec![DiscordEmbed {
                 title: notification_type.to_string(),
                 description: message.to_string(),
