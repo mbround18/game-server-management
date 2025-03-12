@@ -93,13 +93,8 @@ impl LogRules {
     /// * `continue_processing` - If false, stops processing further rules once this rule matches.
     /// * `ranking` - Optional ranking (0 to 99999) that determines the order in which rules are processed.
     ///
-    pub fn add_rule<F, G>(
-        &self,
-        matcher: F,
-        action: G,
-        stop: bool,
-        ranking: Option<i32>,
-    ) where
+    pub fn add_rule<F, G>(&self, matcher: F, action: G, stop: bool, ranking: Option<i32>)
+    where
         F: Fn(&str) -> bool + Send + Sync + 'static,
         G: Fn(&str) + Send + Sync + 'static,
     {

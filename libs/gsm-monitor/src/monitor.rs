@@ -3,14 +3,14 @@
 //! The monitor continuously reads from a log file and processes each new line using the log rules
 //! defined in the `rules` module. It also detects if the file has been truncated or rotated and reopens it accordingly.
 
+use crate::LogRule;
+use crate::rules::{LOG_TARGET, LogRules};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 use tracing::{error, info};
-use crate::LogRule;
-use crate::rules::{LOG_TARGET, LogRules};
 
 /// Represents a monitor that continuously reads a log file and processes its lines using provided rules.
 #[derive(Clone)]
@@ -29,19 +29,21 @@ impl Monitor {
     }
 
     fn process_rules(&self, line: &str) {
-        let mut filtered_rules: Vec<&LogRule> = self.rules.get_rules()
-          .iter()
-          .filter(|rule| (rule.matcher)(line)) // Step 1: Filter matching rules
-          .scan(false, |stop_flag, rule| {
-              if *stop_flag {
-                  return None; // Stop collecting after first stop=true
-              }
-              if rule.stop {
-                  *stop_flag = true;
-              }
-              Some(rule) // Step 2: Collect until first stop=true
-          })
-          .collect();
+        let rules = self.rules.get_rules(); // Store the result to extend its lifetime
+
+        let filtered_rules: Vec<&LogRule> = rules
+            .iter() // Now we iterate over a stable reference
+            .filter(|rule| (rule.matcher)(line)) // Step 1: Filter matching rules
+            .scan(false, |stop_flag, rule| {
+                if *stop_flag {
+                    return None; // Stop collecting after first stop=true
+                }
+                if rule.stop {
+                    *stop_flag = true;
+                }
+                Some(rule) // Step 2: Collect until first stop=true
+            })
+            .collect();
 
         for rule in filtered_rules {
             (rule.action)(line); // Step 3: Process actions
@@ -102,7 +104,7 @@ impl Monitor {
                     continue;
                 }
                 Ok(_) => {
-                    &self.process_rules(line.trim_end());
+                    self.process_rules(line.trim_end());
                 }
                 Err(e) => {
                     error!(target: LOG_TARGET, "Error reading from {}: {}", path.display(), e);
