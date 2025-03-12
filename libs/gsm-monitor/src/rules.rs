@@ -97,7 +97,7 @@ impl LogRules {
         &self,
         matcher: F,
         action: G,
-        continue_processing: bool,
+        stop: bool,
         ranking: Option<i32>,
     ) where
         F: Fn(&str) -> bool + Send + Sync + 'static,
@@ -105,7 +105,7 @@ impl LogRules {
     {
         let mut rules = self.rules.write().unwrap();
         let mut rule = LogRule::new();
-        rule.stop = continue_processing;
+        rule.stop = stop;
         rule.matcher = Arc::new(matcher);
         rule.action = Arc::new(action);
         rule.ranking = ranking.unwrap_or_else(|| default_ranking(rules.len()));
@@ -131,13 +131,13 @@ impl Default for LogRules {
         rules.add_rule(
             |line| line.contains("WARNING"),
             |line| warn!("{}", line),
-            false,
+            true,
             None,
         );
         rules.add_rule(
             |line| line.contains("ERROR"),
             |line| error!("{}", line),
-            false,
+            true,
             None,
         );
         rules

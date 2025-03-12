@@ -123,7 +123,7 @@ async fn main() {
                         send_notifications(ServerEvent::Started)
                             .expect("Failed to send webhook event! Invalid url?")
                     },
-                    true,
+                    false,
                     None,
                 );
 
@@ -134,7 +134,7 @@ async fn main() {
                             .expect("Failed to send webhook event! Invalid url?"),
                         None => error!("Failed to extract player name from:\n{line}"),
                     },
-                    true,
+                    false,
                     None,
                 );
 
@@ -145,7 +145,7 @@ async fn main() {
                             .expect("Failed to send webhook event! Invalid url?"),
                         None => error!("Failed to extract player name from:\n{line}"),
                     },
-                    true,
+                    false,
                     None,
                 );
             }
