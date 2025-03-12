@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 use tracing::{error, info};
-
+use crate::LogRule;
 use crate::rules::{LOG_TARGET, LogRules};
 
 /// Represents a monitor that continuously reads a log file and processes its lines using provided rules.
@@ -26,6 +26,26 @@ impl Monitor {
     /// * `rules` - A set of log rules to apply to the log file's lines.
     pub fn new(rules: LogRules) -> Self {
         Self { rules }
+    }
+
+    fn process_rules(&self, line: &str) {
+        let mut filtered_rules: Vec<&LogRule> = self.rules.get_rules()
+          .iter()
+          .filter(|rule| (rule.matcher)(line)) // Step 1: Filter matching rules
+          .scan(false, |stop_flag, rule| {
+              if *stop_flag {
+                  return None; // Stop collecting after first stop=true
+              }
+              if rule.stop {
+                  *stop_flag = true;
+              }
+              Some(rule) // Step 2: Collect until first stop=true
+          })
+          .collect();
+
+        for rule in filtered_rules {
+            (rule.action)(line); // Step 3: Process actions
+        }
     }
 
     /// Runs the log monitor on the specified file path.
@@ -82,16 +102,7 @@ impl Monitor {
                     continue;
                 }
                 Ok(_) => {
-                    let line = line.trim_end();
-                    // Process the line using each rule in order.
-                    for rule in self.rules.get_rules().iter() {
-                        if (rule.matcher)(line) {
-                            (rule.action)(line);
-                            if rule.stop {
-                                break;
-                            }
-                        }
-                    }
+                    &self.process_rules(line.trim_end());
                 }
                 Err(e) => {
                     error!(target: LOG_TARGET, "Error reading from {}: {}", path.display(), e);
