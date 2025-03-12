@@ -5,6 +5,7 @@ use crate::environment::name;
 use clap::{Parser, Subcommand};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
+use gsm_monitor::LogRules;
 use gsm_shared::{fetch_var, is_env_var_truthy};
 use std::env;
 use std::path::PathBuf;
@@ -108,8 +109,11 @@ async fn main() {
                 let inst = instance.lock().await;
                 inst.config.working_dir.clone()
             };
+
+            let rules = LogRules::default();
+
             // Start monitoring the instance log files.
-            gsm_monitor::start_instance_log_monitor(working_dir);
+            gsm_monitor::start_instance_log_monitor(working_dir, rules);
 
             if update_job || is_env_var_truthy("AUTO_UPDATE") {
                 debug!("Auto-update job condition met.");

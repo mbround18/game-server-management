@@ -22,6 +22,20 @@ impl Instance {
         Self { config }
     }
 
+    pub fn pid(&self) -> Result<Pid, InstanceError> {
+        let pid_file = self.config.pid_file();
+        if pid_file.exists() {
+            // Read the PID from the file
+            return fs::read_to_string(&pid_file)
+                .map_err(InstanceError::IoError)?
+                .trim()
+                .parse::<i32>()
+                .map(Pid::from_raw)
+                .map_err(InstanceError::ParseError);
+        }
+        Err(InstanceError::Unknown("Failed to find pid".to_string()))
+    }
+
     /// Installs the server using SteamCMD.
     pub fn install(&self) -> Result<(), InstanceError> {
         let status = install::install(
@@ -78,25 +92,19 @@ impl Instance {
 
     /// Stops the server gracefully.
     pub fn stop(&self) -> Result<(), InstanceError> {
-        let pid_file = self.config.working_dir.join("instance.pid");
-        if pid_file.exists() {
-            // Read the PID from the file
-            let pid = fs::read_to_string(&pid_file)
-                .map_err(|e| InstanceError::IoError(e))?
-                .trim()
-                .parse::<i32>()
-                .map_err(|e| InstanceError::ParseError(e))?;
-
-            // Send SIGINT to the process
-            signal::kill(Pid::from_raw(pid), Signal::SIGINT)
-                .map_err(|e| InstanceError::SignalError(e))?;
-        } else {
-            let file_name = std::path::Path::new(&self.config.command)
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap();
-            shutdown::blocking_shutdown(file_name);
+        match self.pid() {
+            Ok(pid) => {
+                signal::kill(pid, Signal::SIGINT).map_err(InstanceError::SignalError)?;
+                fs::remove_file(self.config.pid_file()).map_err(InstanceError::IoError)?;
+            }
+            Err(_) => {
+                let file_name = std::path::Path::new(&self.config.command)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap();
+                shutdown::blocking_shutdown(file_name);
+            }
         }
         Ok(())
     }

@@ -60,3 +60,21 @@ impl Default for InstanceConfig {
         }
     }
 }
+
+impl InstanceConfig {
+    pub fn pid_file(&self) -> PathBuf {
+        self.working_dir.join("instance.pid")
+    }
+
+    pub fn log_dir(&self) -> PathBuf {
+        self.working_dir.join("logs")
+    }
+
+    pub fn stdout(&self) -> PathBuf {
+        self.log_dir().join("server.log")
+    }
+
+    pub fn stderr(&self) -> PathBuf {
+        self.log_dir().join("server.err")
+    }
+}

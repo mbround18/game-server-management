@@ -2,7 +2,8 @@ use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
 use crate::launcher::launch_server;
 use daemonize::Daemonize;
-use std::fs::{File, create_dir_all};
+use std::fs;
+use std::fs::{File, create_dir_all, write};
 use std::path::Path;
 use std::process::Child;
 use tracing::info;
@@ -32,10 +33,18 @@ pub fn start_daemonized(config: InstanceConfig) -> Result<Child, InstanceError> 
                         .working_directory(&working_dir)
                         .stdout(stdout)
                         .stderr(stderr)
-                        .pid_file(working_dir.clone().join("instance.pid"))
                         .privileged_action(move || {
                             info!("Executing privileged actions before launching server");
                             // Return the command that will be exec'd.
+                            let pid = child.id();
+                            let pid_file = working_dir.clone().join("instance.pid");
+                            if pid_file.exists() {
+                                fs::remove_file(&pid_file)
+                                    .expect("Failed to remove file! Permissions issue?")
+                            }
+                            write(pid_file, pid.to_string())
+                                .expect("Failed to write to pid file! Permissions issue?");
+
                             child
                         })
                         .start()

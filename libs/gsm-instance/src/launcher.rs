@@ -1,6 +1,7 @@
 use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
-use std::process::Command;
+use std::fs::File;
+use std::process::{Command, Stdio};
 use tracing::debug;
 use which::which;
 
@@ -78,6 +79,13 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
 
     // Set the working directory.
     command.current_dir(&config.working_dir);
+
+    let log_file = File::create(config.stdout()).map_err(InstanceError::IoError)?;
+
+    command.stdout(Stdio::from(
+        log_file.try_clone().map_err(InstanceError::IoError)?,
+    ));
+    command.stderr(Stdio::from(log_file));
 
     debug!("Launching server with command: {:?}", command);
 
