@@ -29,7 +29,9 @@ impl Monitor {
     }
 
     fn process_rules(&self, line: &str) {
-        let rules = self.rules.get_rules(); // Store the result to extend its lifetime
+        let mut rules = self.rules.get_rules(); // Store the result to extend its lifetime
+
+        rules.sort_by_key(|rule| rule.ranking); // ✅ Sort by ranking
 
         let filtered_rules: Vec<&LogRule> = rules
             .iter() // Now we iterate over a stable reference
