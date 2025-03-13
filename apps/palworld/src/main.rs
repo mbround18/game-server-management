@@ -49,10 +49,11 @@ async fn main() {
     let instance_config = InstanceConfig {
         app_id: 2394010, // Palworld Steam App ID
         name: name(),
-        command: "PalServer.sh".to_string(),
+        command: "/bin/bash".to_string(),
         install_args: vec![],
         launch_args: {
             let mut args = vec![
+                "./PalServer.sh".to_string(),
                 "EpicName=PalServer".to_string(),
                 format!("-publicip={}", fetch_var("PUBLIC_IP", "0.0.0.0")),
             ];
@@ -65,12 +66,7 @@ async fn main() {
                 args.push(format!("-publicport={}", public_port));
             }
 
-            if let Some(server_name) = env::var("SERVER_NAME")
-                .ok()
-                .or(Some("My PalWorld Server".to_string()))
-            {
-                args.push(format!("-servername=\"{}\"", server_name));
-            }
+            args.push(format!("-servername=\"{}\"", name()));
 
             if let Ok(server_password) = env::var("SERVER_PASSWORD") {
                 args.push(format!("-serverpassword=\"{}\"", server_password));

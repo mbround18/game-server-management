@@ -1,3 +1,3 @@
 pub fn name() -> String {
-    gsm_shared::fetch_var("NAME", "My Enshrouded Server")
+    gsm_shared::fetch_var("NAME", "My Pal Server")
 }
