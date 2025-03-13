@@ -139,7 +139,7 @@ async fn main() {
                 );
 
                 rules.add_rule(
-                    |line| line.contains("[server] Remove Player "),
+                    |line| line.contains("[server] Remove Entity for Player"),
                     |line| match utils::extract_player_left_name(line) {
                         Some(name) => send_notifications(ServerEvent::PlayerLeft(name))
                             .expect("Failed to send webhook event! Invalid url?"),
