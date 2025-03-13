@@ -217,6 +217,8 @@ async fn main() {
                 if let Ok(delay_str) = env::var("STOP_DELAY") {
                     match delay_str.parse::<u64>() {
                         Ok(delay_sec) => {
+                            send_notifications(ServerEvent::Stopping)
+                                .expect("Failed to send webhook event! Invalid url?");
                             tokio::time::sleep(Duration::from_secs(delay_sec)).await;
                         }
                         Err(_) => {
@@ -224,8 +226,6 @@ async fn main() {
                         }
                     }
                 }
-                send_notifications(ServerEvent::Stopping)
-                    .expect("Failed to send webhook event! Invalid url?");
             }
 
             warn!("Stopping Enshrouded server...");
