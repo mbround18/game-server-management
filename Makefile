@@ -1,6 +1,7 @@
 .PHONY: build lint test docker-build docker-push
 
 GIT_TAG := $(shell git rev-parse --short HEAD)
+export COMPOSE_BAKE=true
 
 lint:
 	cargo fmt
