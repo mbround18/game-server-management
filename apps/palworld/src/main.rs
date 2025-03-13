@@ -49,9 +49,42 @@ async fn main() {
     let instance_config = InstanceConfig {
         app_id: 2394010, // Palworld Steam App ID
         name: name(),
-        command: "PalServer-Linux".to_string(),
+        command: "PalServer.sh".to_string(),
         install_args: vec![],
-        launch_args: vec![],
+        launch_args: {
+            let mut args = vec![
+                "EpicName=PalServer".to_string(),
+                format!("-publicip={}", fetch_var("PUBLIC_IP", "0.0.0.0")),
+            ];
+
+            if is_env_var_truthy("COMMUNITY") {
+                args.push("EpicApp=PalServer".to_string());
+            }
+
+            if let Some(public_port) = env::var("PUBLIC_PORT").ok().or(Some("8211".to_string())) {
+                args.push(format!("-publicport={}", public_port));
+            }
+
+            if let Some(server_name) = env::var("SERVER_NAME").ok().or(Some("My PalWorld Server".to_string())) {
+                args.push(format!("-servername=\"{}\"", server_name));
+            }
+
+            if let Ok(server_password) = env::var("SERVER_PASSWORD") {
+                args.push(format!("-serverpassword=\"{}\"", server_password));
+            }
+
+            if let Ok(admin_password) = env::var("ADMIN_PASSWORD") {
+                args.push(format!("-adminpassword=\"{}\"", admin_password));
+            }
+
+            if is_env_var_truthy("MULTITHREADING") {
+                args.push("-useperfthreads".to_string());
+                args.push("-NoAsyncLoadingThread".to_string());
+                args.push("-UseMultithreadForDS".to_string());
+            }
+
+            args
+        },
         force_windows: false,
         working_dir: PathBuf::from("/home/steam/palworld"),
     };
