@@ -35,7 +35,7 @@ pub fn extract_player_joined_name(log: &str) -> Option<String> {
 pub fn extract_player_left_name(log: &str) -> Option<String> {
     // This regex looks for the phrase "Remove Player", followed by one or more spaces,
     // then a single quote, then captures one or more characters that are not a single quote.
-    let re = Regex::new(r"Remove Player\s+'([^']+)'").unwrap();
+    let re = Regex::new(r"Remove Entity for Player\s+'([^']+)'").unwrap();
     re.captures(log)
         .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
 }
