@@ -65,7 +65,10 @@ async fn main() {
                 args.push(format!("-publicport={}", public_port));
             }
 
-            if let Some(server_name) = env::var("SERVER_NAME").ok().or(Some("My PalWorld Server".to_string())) {
+            if let Some(server_name) = env::var("SERVER_NAME")
+                .ok()
+                .or(Some("My PalWorld Server".to_string()))
+            {
                 args.push(format!("-servername=\"{}\"", server_name));
             }
 
@@ -101,7 +104,7 @@ async fn main() {
                 error!("Installation failed: {}", e);
             } else {
                 debug!("Installation successful.");
-                let config_path = path.join("palworld_server.json");
+                let config_path = path.join("Pal/Saved/Config/LinuxServer/PalWorldSettings.ini");
                 game_settings::load_or_create_config(&config_path);
             }
         }
