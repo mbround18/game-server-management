@@ -815,9 +815,11 @@ dependencies = [
 name = "gsm-notifications"
 version = "0.1.0"
 dependencies = [
+ "gsm-shared",
  "reqwest",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

@@ -1,11 +1,13 @@
 mod environment;
 mod game_settings;
+mod utils;
 
 use crate::environment::name;
-use clap::{arg, Parser, Subcommand};
+use clap::{Parser, Subcommand, arg};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
 use gsm_monitor::LogRules;
+use gsm_notifications::notifications::{StandardServerEvents, send_notifications};
 use gsm_shared::{fetch_var, is_env_var_truthy};
 use std::env;
 use std::path::PathBuf;
@@ -52,11 +54,9 @@ async fn main() {
         command: "/bin/bash".to_string(),
         install_args: vec![],
         launch_args: {
-            let mut args = vec![
-                "./PalServer.sh".to_string()
-            ];
+            let mut args = vec!["./PalServer.sh".to_string()];
 
-            if let Some(public_ip) = env::var("PUBLIC_IP").ok() {
+            if let Ok(public_ip) = env::var("PUBLIC_IP") {
                 args.push(format!("-publicip={}", public_ip));
             }
 
@@ -116,12 +116,10 @@ async fn main() {
             let rules = LogRules::default();
 
             if env::var("WEBHOOK_URL").is_ok() {
-                // Commenting out player notifications
-                /*
                 rules.add_rule(
-                    |line| line.contains("[Session] 'HostOnline' (up)!"),
+                    |line| line.contains("Running Palworld dedicated server on"),
                     |_| {
-                        send_notifications(ServerEvent::Started)
+                        send_notifications(StandardServerEvents::Started)
                             .expect("Failed to send webhook event! Invalid url?")
                     },
                     false,
@@ -129,9 +127,9 @@ async fn main() {
                 );
 
                 rules.add_rule(
-                    |line| line.contains("logged in with Permissions:"),
+                    |line| line.contains("joined the server."),
                     |line| match utils::extract_player_joined_name(line) {
-                        Some(name) => send_notifications(ServerEvent::PlayerJoined(name))
+                        Some(name) => send_notifications(StandardServerEvents::PlayerJoined(name))
                             .expect("Failed to send webhook event! Invalid url?"),
                         None => error!("Failed to extract player name from:\n{line}"),
                     },
@@ -140,16 +138,15 @@ async fn main() {
                 );
 
                 rules.add_rule(
-                    |line| line.contains("[server] Remove Entity for Player"),
+                    |line| line.contains("left the server."),
                     |line| match utils::extract_player_left_name(line) {
-                        Some(name) => send_notifications(ServerEvent::PlayerLeft(name))
+                        Some(name) => send_notifications(StandardServerEvents::PlayerLeft(name))
                             .expect("Failed to send webhook event! Invalid url?"),
                         None => error!("Failed to extract player name from:\n{line}"),
                     },
                     false,
                     None,
                 );
-                */
             }
 
             gsm_monitor::start_instance_log_monitor(working_dir, rules);
