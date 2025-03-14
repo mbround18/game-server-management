@@ -2,7 +2,7 @@ mod environment;
 mod game_settings;
 
 use crate::environment::name;
-use clap::{Parser, Subcommand};
+use clap::{arg, Parser, Subcommand};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
 use gsm_monitor::LogRules;
@@ -53,27 +53,23 @@ async fn main() {
         install_args: vec![],
         launch_args: {
             let mut args = vec![
-                "./PalServer.sh".to_string(),
-                "EpicName=PalServer".to_string(),
-                format!("-publicip={}", fetch_var("PUBLIC_IP", "0.0.0.0")),
+                "./PalServer.sh".to_string()
             ];
 
-            if is_env_var_truthy("COMMUNITY") {
-                args.push("EpicApp=PalServer".to_string());
+            if let Some(public_ip) = env::var("PUBLIC_IP").ok() {
+                args.push(format!("-publicip={}", public_ip));
+            }
+
+            if let Some(public_port) = env::var("PORT").ok().or(Some("8211".to_string())) {
+                args.push(format!("-port={}", public_port));
             }
 
             if let Some(public_port) = env::var("PUBLIC_PORT").ok().or(Some("8211".to_string())) {
                 args.push(format!("-publicport={}", public_port));
             }
 
-            args.push(format!("-servername=\"{}\"", name()));
-
-            if let Ok(server_password) = env::var("SERVER_PASSWORD") {
-                args.push(format!("-serverpassword=\"{}\"", server_password));
-            }
-
-            if let Ok(admin_password) = env::var("ADMIN_PASSWORD") {
-                args.push(format!("-adminpassword=\"{}\"", admin_password));
+            if is_env_var_truthy("PUBLIC_LOBBY") {
+                args.push("-publiclobby".to_string());
             }
 
             if is_env_var_truthy("MULTITHREADING") {
