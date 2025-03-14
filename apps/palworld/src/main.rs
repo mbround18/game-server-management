@@ -189,6 +189,10 @@ async fn main() {
                     error!("Failed to stop: {}", e);
                 }
                 Ok(_) => {
+                    if env::var("WEBHOOK_URL").is_ok() {
+                        send_notifications(StandardServerEvents::Stopped)
+                            .expect("Failed to send webhook event! Invalid url?");
+                    }
                     debug!("Server stopped successfully.");
                 }
             }
