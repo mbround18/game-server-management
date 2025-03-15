@@ -1,8 +1,8 @@
-use gsm_notifications::{NotificationError, send_notification};
+use crate::{NotificationError, send_notification};
 use gsm_shared::fetch_var;
 use tracing::debug;
 
-pub(crate) enum ServerEvent {
+pub enum StandardServerEvents {
     PlayerJoined(String),
     PlayerLeft(String),
     Started,
@@ -22,35 +22,35 @@ pub(crate) enum ServerEvent {
 /// # Returns
 ///
 /// A `Result<(), NotificationError>` indicating success or failure of sending the notification.
-pub(crate) fn send_notifications(event: ServerEvent) -> Result<(), NotificationError> {
-    let server_name = fetch_var("NAME", "My Enshrouded Server");
+pub fn send_notifications(event: StandardServerEvents) -> Result<(), NotificationError> {
+    let server_name = fetch_var("NAME", "My Server");
     match std::env::var("WEBHOOK_URL") {
         Ok(webhook_url) => match event {
-            ServerEvent::PlayerJoined(name) => send_notification::<Option<String>>(
+            StandardServerEvents::PlayerJoined(name) => send_notification::<Option<String>>(
                 &webhook_url,
                 &format!("{server_name}: Player Joined"),
                 &format!("Player {name} has joined the adventure!"),
                 None,
             ),
-            ServerEvent::PlayerLeft(name) => send_notification::<Option<String>>(
+            StandardServerEvents::PlayerLeft(name) => send_notification::<Option<String>>(
                 &webhook_url,
                 &format!("{server_name}: Player Left"),
                 &format!("Player {name} has left the adventure."),
                 None,
             ),
-            ServerEvent::Started => send_notification::<Option<String>>(
+            StandardServerEvents::Started => send_notification::<Option<String>>(
                 &webhook_url,
                 &format!("{server_name}: Server Started"),
                 "The server has started successfully.",
                 None,
             ),
-            ServerEvent::Stopping => send_notification::<Option<String>>(
+            StandardServerEvents::Stopping => send_notification::<Option<String>>(
                 &webhook_url,
                 &format!("{server_name}: Server Stopping"),
                 "The server is shutting down gracefully.",
                 None,
             ),
-            ServerEvent::Stopped => send_notification::<Option<String>>(
+            StandardServerEvents::Stopped => send_notification::<Option<String>>(
                 &webhook_url,
                 &format!("{server_name}: Server Stopped"),
                 "The server has been stopped.",

@@ -19,6 +19,8 @@
 //! # Ok::<(), NotificationError>(())
 //! ```
 
+pub mod notifications;
+
 use reqwest::blocking::Client;
 use serde::Serialize;
 use std::error::Error;

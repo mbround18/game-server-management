@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tracing = "0.1"
-tempfile = "3.17.1"
+tempfile = "3.18.0"
 walkdir = "2.5.0"
 zip = "2.2.3"
 fs_extra = "1"
