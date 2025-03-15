@@ -269,9 +269,16 @@ def update_crate(repo, crate, bump_type):
         logging.info("[DRY RUN] Would push commit and tag for %s", crate)
         return new_version, tag_name
 
-    # Push commit and tag.
     try:
+        # Use the token for pushing changes.
+        token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
         origin = repo.remotes.origin
+        if token:
+            # Modify the remote URL to include the token.
+            new_url = origin.url
+            if new_url.startswith("https://"):
+                new_url = new_url.replace("https://", f"https://{token}:x-oauth-basic@")
+            origin.set_url(new_url)
         origin.push()
         origin.push(tag_name)
         logging.info("Pushed changes and tag %s", tag_name)
