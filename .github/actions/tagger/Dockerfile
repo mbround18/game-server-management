@@ -10,11 +10,11 @@ WORKDIR /app
 
 # Copy requirements.txt and install dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt && apt update && apt install -y git && git config --global --add safe.directory /github/workspace
 
 # Copy the rest of the application code
 COPY . /app/
 
 # Set the entrypoint to run your version manager script.
 # Adjust the script filename if necessary.
-ENTRYPOINT ["python", "version_manager.py"]
+ENTRYPOINT ["python", "/app/main.py"]

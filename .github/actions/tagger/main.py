@@ -8,6 +8,7 @@ import tempfile
 import logging
 import requests
 import concurrent.futures
+import subprocess
 from git import Repo, GitCommandError
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
@@ -27,11 +28,23 @@ def is_dry_run():
     """Check if DRY_RUN mode is enabled."""
     return os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
 
+def configure_safe_directory(repo_path):
+    """
+    Configure Git to treat the repository directory as safe.
+    This prevents the "detected dubious ownership" error.
+    """
+    try:
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", repo_path],
+                       check=True)
+        logging.info("Configured safe.directory for %s", repo_path)
+    except Exception as e:
+        logging.error("Failed to configure safe.directory: %s", e)
+
 def graphql_query(query, variables, token):
     headers = {"Authorization": f"Bearer {token}"}
     if is_dry_run():
         logging.info("[DRY RUN] Would execute GraphQL query with variables: %s", json.dumps(variables, indent=2))
-        return {}
+        return {}  # Return an empty result in dry-run mode.
     try:
         response = requests.post(GITHUB_GRAPHQL_URL, json={"query": query, "variables": variables}, headers=headers)
         response.raise_for_status()
@@ -394,6 +407,9 @@ def append_summary(summary_updates):
 # ---------------------------
 def main():
     repo = Repo(os.getcwd())
+    # Configure Git to mark the workspace as safe (fixes dubious ownership error)
+    configure_safe_directory(repo.working_dir)
+
     changed_crates = detect_changed_crates(repo)
     if not changed_crates:
         logging.info("No changed crates detected. Exiting.")
