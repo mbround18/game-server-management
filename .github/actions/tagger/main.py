@@ -165,6 +165,7 @@ def push_with_token(repo, tag_name=None):
         if url.startswith("https://"):
             new_url = url.replace("https://", f"https://{token}:x-oauth-basic@")
             origin.set_url(new_url)
+            logging.info("Updated remote URL to: %s", origin.url)
     try:
         origin.push()
         if tag_name:
