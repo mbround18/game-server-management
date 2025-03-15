@@ -4,19 +4,21 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run the tagger without actually tagging'
+        required: false
+        default: 'false'
 
 jobs:
   tag:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      GITHUB_REPOSITORY: ${{ github.repository }}
-      GITHUB_EVENT_NAME: ${{ github.event_name }}
-      GITHUB_EVENT_PATH: ${{ github.event_path }}
-      GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Run Tagger
         uses: ./.github/actions/tagger
+        with:
+          dry-run: ${{ github.event.inputs.dry-run }}
+          token: ${{ secrets.GH_TOKEN }}

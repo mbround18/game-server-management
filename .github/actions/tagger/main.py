@@ -23,8 +23,15 @@ logging.basicConfig(
 # ---------------------------
 # Helper Functions
 # ---------------------------
+def is_dry_run():
+    """Check if DRY_RUN mode is enabled."""
+    return os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
+
 def graphql_query(query, variables, token):
     headers = {"Authorization": f"Bearer {token}"}
+    if is_dry_run():
+        logging.info("[DRY RUN] Would execute GraphQL query with variables: %s", json.dumps(variables, indent=2))
+        return {}
     try:
         response = requests.post(GITHUB_GRAPHQL_URL, json={"query": query, "variables": variables}, headers=headers)
         response.raise_for_status()
@@ -90,7 +97,7 @@ def determine_bump_type():
                 '''
                 variables = {"owner": owner, "name": repo_name, "number": pr_number}
                 result = graphql_query(query, variables, token)
-                labels = [node["name"] for node in result["data"]["repository"]["pullRequest"]["labels"]["nodes"]]
+                labels = [node["name"] for node in result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("labels", {}).get("nodes", [])]
                 logging.info("PR labels: %s", labels)
                 if "major" in labels:
                     bump_type = "major"
@@ -133,16 +140,21 @@ def update_crate(repo, crate, bump_type):
         patch += 1
     new_version = f"{major}.{minor}.{patch}"
 
+    logging.info("Updating %s from version %s to %s", crate, current_version, new_version)
+
+    if is_dry_run():
+        logging.info("[DRY RUN] Would update Cargo.toml for %s", crate)
+        return new_version, f"{crate}-{new_version}"
+
     # Update Cargo.toml.
-    new_cargo_content = re.sub(
+    updated_cargo_content = re.sub(
         r'^(version\s*=\s*")(\d+\.\d+\.\d+)(")',
         rf'\1{new_version}\3',
         cargo_content,
         flags=re.MULTILINE
     )
     with open(cargo_toml_path, "w") as f:
-        f.write(new_cargo_content)
-    logging.info("Updated %s version from %s to %s", crate, current_version, new_version)
+        f.write(updated_cargo_content)
 
     # Update CHANGELOG.md.
     changelog_path = os.path.join(crate_dir, "CHANGELOG.md")
@@ -202,6 +214,10 @@ def update_crate(repo, crate, bump_type):
         counter += 1
     repo.create_tag(tag_name, message=f"Release {crate} {new_version}")
     logging.info("Created tag %s for %s", tag_name, crate)
+
+    if is_dry_run():
+        logging.info("[DRY RUN] Would push commit and tag for %s", crate)
+        return new_version, tag_name
 
     # Push commit and tag.
     try:
