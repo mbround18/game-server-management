@@ -26,6 +26,7 @@ from git import Repo
 from modules.config import configure_safe_directory, configure_git_identity
 from modules.github_utils import determine_bump_type
 from modules.versioning import detect_changed_crates, update_crate, update_downstream, append_summary
+from modules.push import push_with_token
 
 # Set up basic logging (this can also be configured in a separate logging config file)
 logging.basicConfig(
@@ -60,8 +61,11 @@ def main():
         if new_version and tag_name:
             logging.info("Crate %s updated to version %s (tag: %s)", crate, new_version, tag_name)
             updated.append((crate, new_version, tag_name))
-        else:
+            push_with_token(repo, tag_name)
+    else:
             logging.error("Failed to update version for crate: %s", crate)
+
+
 
     # Process downstream updates concurrently.
     downstream_updates = []
