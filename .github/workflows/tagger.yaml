@@ -1,0 +1,24 @@
+name: Tag Crates
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run the tagger without actually tagging'
+        required: false
+        default: 'false'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Tagger
+        uses: ./.github/actions/tagger
+        with:
+          dry-run: ${{ github.event.inputs.dry-run }}
+          token: ${{ secrets.GH_TOKEN }}
