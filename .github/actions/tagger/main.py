@@ -30,7 +30,7 @@ def is_dry_run():
 def configure_safe_directory(repo_path):
     """
     Configure Git to treat the repository directory as safe using GitPython's config writer.
-    This avoids the dubious ownership error without calling a shell.
+    This avoids the dubious ownership error without invoking a shell.
     """
     try:
         with Repo(repo_path).config_writer(config_level='global') as cw:
@@ -58,17 +58,23 @@ def graphql_query(query, variables, token):
 
 def detect_changed_crates(repo):
     """
-    Detect crates that changed by examining the diff of the HEAD commit against its parent.
-    For initial commits, all files in the tree are considered.
+    Detect crates that changed by examining the diff of HEAD against its parent.
+    If the diff fails, fallback to traversing the commit tree.
     Returns a sorted list of crate names (directories under "apps/").
     """
     commit = repo.head.commit
+    changed_files = []
     if commit.parents:
         parent = commit.parents[0]
-        diff_index = commit.diff(parent)
-        changed_files = [item.a_path for item in diff_index]
+        try:
+            diff_index = commit.diff(parent)
+            changed_files = [item.a_path for item in diff_index if item.a_path]
+        except GitCommandError as e:
+            logging.error("Error computing diff via commit.diff: %s", e)
+            # Fallback: traverse the commit tree for all blob paths.
+            changed_files = [item.path for item in commit.tree.traverse() if item.type == 'blob']
     else:
-        # Initial commit: traverse the tree for all blob paths.
+        # For initial commit, traverse the entire tree.
         changed_files = [item.path for item in commit.tree.traverse() if item.type == 'blob']
     crates = set()
     for f in changed_files:
@@ -163,7 +169,7 @@ def update_crate(repo, crate, bump_type):
         logging.info("[DRY RUN] Would update Cargo.toml for %s", crate)
         return new_version, f"{crate}-{new_version}"
 
-    # Update Cargo.toml using a lambda replacement to avoid backreference issues.
+    # Update Cargo.toml using a lambda to safely replace the version.
     updated_cargo_content = re.sub(
         r'^(version\s*=\s*")(\d+\.\d+\.\d+)(")',
         lambda m: f'{m.group(1)}{new_version}{m.group(3)}',
