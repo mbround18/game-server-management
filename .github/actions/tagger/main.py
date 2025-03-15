@@ -30,7 +30,6 @@ def is_dry_run():
 def configure_safe_directory(repo_path):
     """
     Configure Git to treat the repository directory as safe using GitPython's config writer.
-    This avoids the dubious ownership error without invoking a shell.
     """
     try:
         with Repo(repo_path).config_writer(config_level='global') as cw:
@@ -38,6 +37,34 @@ def configure_safe_directory(repo_path):
         logging.info("Configured safe.directory for %s", repo_path)
     except Exception as e:
         logging.error("Failed to configure safe.directory: %s", e)
+
+def configure_git_identity(repo):
+    """
+    Configure a default Git identity (user.name and user.email) if not already set.
+    """
+    try:
+        config_reader = repo.config_reader()
+    except Exception:
+        config_reader = None
+
+    try:
+        with repo.config_writer() as cw:
+            try:
+                name = config_reader.get_value("user", "name")
+            except Exception:
+                name = None
+            try:
+                email = config_reader.get_value("user", "email")
+            except Exception:
+                email = None
+            if not name:
+                cw.set_value("user", "name", "GitHub Actions")
+                logging.info("Configured git user.name as 'GitHub Actions'")
+            if not email:
+                cw.set_value("user", "email", "actions@github.com")
+                logging.info("Configured git user.email as 'actions@github.com'")
+    except Exception as e:
+        logging.error("Failed to configure git identity: %s", e)
 
 def graphql_query(query, variables, token):
     headers = {"Authorization": f"Bearer {token}"}
@@ -417,8 +444,9 @@ def append_summary(summary_updates):
 # ---------------------------
 def main():
     repo = Repo(os.getcwd())
-    # Configure Git safe directory to avoid dubious ownership errors.
+    # Configure Git safe directory and set a default Git identity.
     configure_safe_directory(repo.working_dir)
+    configure_git_identity(repo)
 
     changed_crates = detect_changed_crates(repo)
     if not changed_crates:
