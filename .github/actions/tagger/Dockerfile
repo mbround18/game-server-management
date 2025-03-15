@@ -17,4 +17,4 @@ COPY . /app/
 
 # Set the entrypoint to run your version manager script.
 # Adjust the script filename if necessary.
-ENTRYPOINT ["python", "version_manager.py"]
+ENTRYPOINT ["python", "main.py"]
