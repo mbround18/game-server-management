@@ -8,7 +8,6 @@ import tempfile
 import logging
 import requests
 import concurrent.futures
-import subprocess
 from git import Repo, GitCommandError
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
@@ -30,12 +29,12 @@ def is_dry_run():
 
 def configure_safe_directory(repo_path):
     """
-    Configure Git to treat the repository directory as safe.
-    This prevents the "detected dubious ownership" error.
+    Configure Git to treat the repository directory as safe using GitPython's config writer.
+    This avoids the dubious ownership error without calling a shell.
     """
     try:
-        subprocess.run(["git", "config", "--global", "--add", "safe.directory", repo_path],
-                       check=True)
+        with Repo(repo_path).config_writer(config_level='global') as cw:
+            cw.set_value("safe", "directory", repo_path)
         logging.info("Configured safe.directory for %s", repo_path)
     except Exception as e:
         logging.error("Failed to configure safe.directory: %s", e)
@@ -59,14 +58,18 @@ def graphql_query(query, variables, token):
 
 def detect_changed_crates(repo):
     """
-    Detect crates that changed by checking for file changes under apps/<crate>/.
-    Returns a sorted list of crate names.
+    Detect crates that changed by examining the diff of the HEAD commit against its parent.
+    For initial commits, all files in the tree are considered.
+    Returns a sorted list of crate names (directories under "apps/").
     """
-    try:
-        diff = repo.git.diff('HEAD~1', 'HEAD', '--name-only')
-        changed_files = diff.splitlines()
-    except GitCommandError:
-        changed_files = repo.git.ls_files().splitlines()
+    commit = repo.head.commit
+    if commit.parents:
+        parent = commit.parents[0]
+        diff_index = commit.diff(parent)
+        changed_files = [item.a_path for item in diff_index]
+    else:
+        # Initial commit: traverse the tree for all blob paths.
+        changed_files = [item.path for item in commit.tree.traverse() if item.type == 'blob']
     crates = set()
     for f in changed_files:
         if f.startswith("apps/"):
@@ -110,7 +113,8 @@ def determine_bump_type():
                 '''
                 variables = {"owner": owner, "name": repo_name, "number": pr_number}
                 result = graphql_query(query, variables, token)
-                labels = [node["name"] for node in result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("labels", {}).get("nodes", [])]
+                labels = [node["name"] for node in result.get("data", {}).get("repository", {}) \
+                    .get("pullRequest", {}).get("labels", {}).get("nodes", [])]
                 logging.info("PR labels: %s", labels)
                 if "major" in labels:
                     bump_type = "major"
@@ -159,10 +163,10 @@ def update_crate(repo, crate, bump_type):
         logging.info("[DRY RUN] Would update Cargo.toml for %s", crate)
         return new_version, f"{crate}-{new_version}"
 
-    # Update Cargo.toml.
+    # Update Cargo.toml using a lambda replacement to avoid backreference issues.
     updated_cargo_content = re.sub(
         r'^(version\s*=\s*")(\d+\.\d+\.\d+)(")',
-        rf'\1{new_version}\3',
+        lambda m: f'{m.group(1)}{new_version}{m.group(3)}',
         cargo_content,
         flags=re.MULTILINE
     )
@@ -407,7 +411,7 @@ def append_summary(summary_updates):
 # ---------------------------
 def main():
     repo = Repo(os.getcwd())
-    # Configure Git to mark the workspace as safe (fixes dubious ownership error)
+    # Configure Git safe directory to avoid dubious ownership errors.
     configure_safe_directory(repo.working_dir)
 
     changed_crates = detect_changed_crates(repo)
