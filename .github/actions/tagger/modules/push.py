@@ -51,7 +51,8 @@ def push_with_token(repo, tag_name=None):
 
     try:
         # Push commits using the tokenized URL.
-        subprocess.run(["git", "push", tokenized_url], check=True)
+        subprocess.run(["git", "remote", "set-url", "origin", tokenized_url], check=True)
+        subprocess.run(["git", "push", "--tags", tokenized_url], check=True)
         logging.info("Pushed commits using tokenized URL.")
         # If a tag name is provided, push the tag as well.
         if tag_name:
