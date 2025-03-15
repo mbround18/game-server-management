@@ -98,10 +98,8 @@ def detect_changed_crates(repo):
             changed_files = [item.a_path for item in diff_index if item.a_path]
         except GitCommandError as e:
             logging.error("Error computing diff via commit.diff: %s", e)
-            # Fallback: traverse the commit tree for all blob paths.
             changed_files = [item.path for item in commit.tree.traverse() if item.type == 'blob']
     else:
-        # For initial commit, traverse the entire tree.
         changed_files = [item.path for item in commit.tree.traverse() if item.type == 'blob']
     crates = set()
     for f in changed_files:
@@ -156,6 +154,25 @@ def determine_bump_type():
     logging.info("Determined bump type: %s", bump_type)
     return bump_type
 
+def push_with_token(repo, tag_name=None):
+    """
+    Update the remote URL to include the token and push commits and tag.
+    """
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    origin = repo.remotes.origin
+    if token:
+        url = origin.url
+        if url.startswith("https://"):
+            new_url = url.replace("https://", f"https://{token}:x-oauth-basic@")
+            origin.set_url(new_url)
+    try:
+        origin.push()
+        if tag_name:
+            origin.push(tag_name)
+        logging.info("Pushed changes and tag %s", tag_name if tag_name else "")
+    except GitCommandError as e:
+        logging.error("Error pushing changes: %s", e)
+
 def update_crate(repo, crate, bump_type):
     """
     For the given crate, update Cargo.toml version and CHANGELOG.md,
@@ -168,7 +185,6 @@ def update_crate(repo, crate, bump_type):
         logging.error("Cargo.toml not found for %s", crate)
         return None, None
 
-    # Read Cargo.toml and extract current version.
     with open(cargo_toml_path, "r") as f:
         cargo_content = f.read()
     m = re.search(r'^version\s*=\s*"(\d+\.\d+\.\d+)"', cargo_content, re.MULTILINE)
@@ -178,7 +194,6 @@ def update_crate(repo, crate, bump_type):
     current_version = m.group(1)
     major, minor, patch = map(int, current_version.split('.'))
 
-    # Bump version based on bump_type.
     if bump_type == "major":
         major += 1
         minor = 0
@@ -189,14 +204,12 @@ def update_crate(repo, crate, bump_type):
     else:
         patch += 1
     new_version = f"{major}.{minor}.{patch}"
-
     logging.info("Updating %s from version %s to %s", crate, current_version, new_version)
 
     if is_dry_run():
         logging.info("[DRY RUN] Would update Cargo.toml for %s", crate)
         return new_version, f"{crate}-{new_version}"
 
-    # Update Cargo.toml using a lambda to safely replace the version.
     updated_cargo_content = re.sub(
         r'^(version\s*=\s*")(\d+\.\d+\.\d+)(")',
         lambda m: f'{m.group(1)}{new_version}{m.group(3)}',
@@ -206,7 +219,6 @@ def update_crate(repo, crate, bump_type):
     with open(cargo_toml_path, "w") as f:
         f.write(updated_cargo_content)
 
-    # Update CHANGELOG.md.
     changelog_path = os.path.join(crate_dir, "CHANGELOG.md")
     if not os.path.isfile(changelog_path):
         with open(changelog_path, "w") as f:
@@ -248,13 +260,11 @@ def update_crate(repo, crate, bump_type):
     else:
         logging.info("No new commits for %s changelog update", crate)
 
-    # Commit changes.
     repo.index.add([cargo_toml_path, changelog_path])
     commit_msg = f"chore: bump {crate} version to {new_version} [skip ci]"
     repo.index.commit(commit_msg)
     logging.info("Committed changes for %s", crate)
 
-    # Create git tag (append a counter if needed).
     base_tag = f"{crate}-{new_version}"
     tag_name = base_tag
     counter = 1
@@ -269,21 +279,7 @@ def update_crate(repo, crate, bump_type):
         logging.info("[DRY RUN] Would push commit and tag for %s", crate)
         return new_version, tag_name
 
-    try:
-        # Use the token for pushing changes.
-        token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-        origin = repo.remotes.origin
-        if token:
-            # Modify the remote URL to include the token.
-            new_url = origin.url
-            if new_url.startswith("https://"):
-                new_url = new_url.replace("https://", f"https://{token}:x-oauth-basic@")
-            origin.set_url(new_url)
-        origin.push()
-        origin.push(tag_name)
-        logging.info("Pushed changes and tag %s", tag_name)
-    except GitCommandError as e:
-        logging.error("Error pushing changes: %s", e)
+    push_with_token(repo, tag_name)
     return new_version, tag_name
 
 def update_downstream(crate, new_version, tag_name):
@@ -330,7 +326,6 @@ def update_downstream(crate, new_version, tag_name):
         return None
     docker_text = docker_obj["text"]
 
-    # Look for image reference in the Dockerfile.
     pattern = fr"mbround18/gsm-reference:{crate}-([0-9]+\.[0-9]+\.[0-9]+)"
     m_docker = re.search(pattern, docker_text)
     if not m_docker:
