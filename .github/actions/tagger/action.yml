@@ -1,0 +1,9 @@
+name: Crate Version Manager
+description: >
+  Automates version bumping, CHANGELOG updates, git tagging,
+  and downstream dependency updates for Rust crates located under ./apps/.
+author: mbround18
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
