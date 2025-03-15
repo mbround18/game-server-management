@@ -157,32 +157,35 @@ def determine_bump_type():
 
 def push_with_token(repo, tag_name=None):
     """
-    Use the Git CLI to update the remote URL with the token, push commits (and optionally tag),
-    then reset the remote URL back to its original value.
+    Use the Git CLI to push commits (and optionally a tag) using a token.
+    The remote URL is temporarily replaced with a tokenized URL, then reset.
     """
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        logging.error("No token found in GH_TOKEN or GITHUB_TOKEN")
+        return
     origin = repo.remotes.origin
     original_url = origin.url
-    if token and original_url.startswith("https://"):
-        new_url = original_url.replace("https://", f"https://{token}:x-oauth-basic@")
-        try:
-            subprocess.run(["git", "remote", "set-url", "origin", new_url], check=True)
-        except Exception as e:
-            logging.error("Error setting remote URL with token: %s", e)
+    if original_url.startswith("https://"):
+        tokenized_url = original_url.replace("https://", f"https://{token}:x-oauth-basic@")
+    else:
+        logging.error("Remote URL does not start with 'https://': %s", original_url)
+        return
+
     try:
-        origin.push()
+        # Use the tokenized URL for pushing.
+        subprocess.run(["git", "push", tokenized_url], check=True)
         if tag_name:
-            origin.push(tag_name)
+            subprocess.run(["git", "push", tokenized_url, tag_name], check=True)
         logging.info("Pushed changes and tag %s", tag_name if tag_name else "")
-    except GitCommandError as e:
+    except subprocess.CalledProcessError as e:
         logging.error("Error pushing changes: %s", e)
     finally:
-        # Reset the remote URL to the original value
-        if token and original_url.startswith("https://"):
-            try:
-                subprocess.run(["git", "remote", "set-url", "origin", original_url], check=True)
-            except Exception as e:
-                logging.error("Error resetting remote URL: %s", e)
+        # Reset the remote URL to its original value.
+        try:
+            subprocess.run(["git", "remote", "set-url", "origin", original_url], check=True)
+        except subprocess.CalledProcessError as e:
+            logging.error("Error resetting remote URL: %s", e)
 
 def update_crate(repo, crate, bump_type):
     """
