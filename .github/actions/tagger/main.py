@@ -8,6 +8,7 @@ import tempfile
 import logging
 import requests
 import concurrent.futures
+import subprocess
 from git import Repo, GitCommandError
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
@@ -156,16 +157,18 @@ def determine_bump_type():
 
 def push_with_token(repo, tag_name=None):
     """
-    Update the remote URL to include the token and push commits and tag.
+    Use the Git CLI to update the remote URL with the token, push commits (and optionally tag),
+    then reset the remote URL back to its original value.
     """
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     origin = repo.remotes.origin
-    if token:
-        url = origin.url
-        if url.startswith("https://"):
-            new_url = url.replace("https://", f"https://{token}:x-oauth-basic@")
-            origin.set_url(new_url)
-            logging.info("Updated remote URL to: %s", origin.url)
+    original_url = origin.url
+    if token and original_url.startswith("https://"):
+        new_url = original_url.replace("https://", f"https://{token}:x-oauth-basic@")
+        try:
+            subprocess.run(["git", "remote", "set-url", "origin", new_url], check=True)
+        except Exception as e:
+            logging.error("Error setting remote URL with token: %s", e)
     try:
         origin.push()
         if tag_name:
@@ -173,6 +176,13 @@ def push_with_token(repo, tag_name=None):
         logging.info("Pushed changes and tag %s", tag_name if tag_name else "")
     except GitCommandError as e:
         logging.error("Error pushing changes: %s", e)
+    finally:
+        # Reset the remote URL to the original value
+        if token and original_url.startswith("https://"):
+            try:
+                subprocess.run(["git", "remote", "set-url", "origin", original_url], check=True)
+            except Exception as e:
+                logging.error("Error resetting remote URL: %s", e)
 
 def update_crate(repo, crate, bump_type):
     """
@@ -447,7 +457,6 @@ def append_summary(summary_updates):
 # ---------------------------
 def main():
     repo = Repo(os.getcwd())
-    # Configure Git safe directory and set a default Git identity.
     configure_safe_directory(repo.working_dir)
     configure_git_identity(repo)
 
@@ -459,13 +468,11 @@ def main():
     bump_type = determine_bump_type()
     updated = []  # List of tuples: (crate, new_version, tag)
 
-    # Process crate updates sequentially (they modify the same repo)
     for crate in changed_crates:
         new_version, tag_name = update_crate(repo, crate, bump_type)
         if new_version and tag_name:
             updated.append((crate, new_version, tag_name))
 
-    # Process downstream updates concurrently
     downstream_updates = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_crate = {
