@@ -8,7 +8,8 @@ on:
       dry-run:
         description: 'Run the tagger without actually tagging'
         required: false
-        default: 'false'
+        type: boolean
+        default: false
 
 jobs:
   tag:

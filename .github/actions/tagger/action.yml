@@ -11,7 +11,7 @@ inputs:
   dry-run:
     description: 'Run the tagger without actually tagging'
     required: false
-    default: 'false'
+    default: 'true'
 
 runs:
   using: 'docker'
