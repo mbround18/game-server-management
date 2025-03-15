@@ -31,7 +31,7 @@ def graphql_query(query, variables, token):
     headers = {"Authorization": f"Bearer {token}"}
     if is_dry_run():
         logging.info("[DRY RUN] Would execute GraphQL query with variables: %s", json.dumps(variables, indent=2))
-        return {}
+        return {}  # Return an empty result in dry-run mode.
     try:
         response = requests.post(GITHUB_GRAPHQL_URL, json={"query": query, "variables": variables}, headers=headers)
         response.raise_for_status()
