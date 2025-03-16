@@ -37,7 +37,6 @@ def push_with_token(repo, tag_name=None):
         subprocess.run(["git", "push", "origin"], check=True)
         logging.info("Pushed commits successfully.")
 
-        # Push the specific tag if provided.
         if tag_name:
             subprocess.run(["git", "push", "origin", tag_name], check=True)
             logging.info("Pushed tag: %s", tag_name)
