@@ -11,6 +11,9 @@
       <sourceFolder url="file://$MODULE_DIR$/apps/enshrouded/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/libs/gsm-cron/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/libs/gsm-monitor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/apps/palworld/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/gsm-serde/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/ini-derive/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

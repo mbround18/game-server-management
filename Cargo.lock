@@ -817,7 +817,18 @@ dependencies = [
 name = "gsm-notifications"
 version = "0.1.0"
 dependencies = [
+ "gsm-shared",
  "reqwest",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "gsm-serde"
+version = "0.1.0"
+dependencies = [
+ "ini-derive",
  "serde",
  "serde_json",
 ]
@@ -1176,6 +1187,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ini-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1470,6 +1490,29 @@ name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
+
+[[package]]
+name = "palworld"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "gsm-cron",
+ "gsm-instance",
+ "gsm-mod-manager",
+ "gsm-monitor",
+ "gsm-notifications",
+ "gsm-serde",
+ "gsm-shared",
+ "ini-derive",
+ "lazy_static",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_plain",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "parking_lot"
@@ -1832,6 +1875,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_plain"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ce1fc6db65a611022b23a0dec6975d63fb80a302cb3388835ff02c097258d50"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2127,9 +2179,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.7.13"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7fcaa8d55a2bdd6b83ace262b016eca0d79ee02818c5c1bcdf0305114081078"
+checksum = "6b9590b93e6fcc1739458317cccd391ad3955e2bde8913edf6f95f9e65a8f034"
 dependencies = [
  "bytes",
  "futures-core",
