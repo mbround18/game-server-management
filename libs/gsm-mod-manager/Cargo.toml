@@ -9,9 +9,9 @@ path = "src/lib.rs"
 
 [dependencies]
 tracing = "0.1"
-tempfile = "3.18.0"
+tempfile = "3.19.1"
 walkdir = "2.5.0"
-zip = "2.2.3"
+zip = "2.4.2"
 fs_extra = "1"
 thiserror = "2"
 regex = "1"

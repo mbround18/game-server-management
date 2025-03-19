@@ -12,7 +12,6 @@ use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
 
@@ -76,7 +75,8 @@ async fn main() {
                 error!("Installation failed: {}", e);
             } else {
                 debug!("Installation successful.");
-                let config_path = path.join("SNM2020/Saved/Config/WindowsServer/GameUserSettings.ini");
+                let config_path =
+                    path.join("SNM2020/Saved/Config/WindowsServer/GameUserSettings.ini");
                 game_settings::load_or_create_config(&config_path);
             }
         }
@@ -99,37 +99,37 @@ async fn main() {
             let rules = LogRules::default();
 
             if env::var("WEBHOOK_URL").is_ok() {
-                rules.add_rule(
-                    |line| line.contains("[Session] 'HostOnline' (up)!"),
-                    |_| {
-                        send_notifications(StandardServerEvents::Started)
-                            .expect("Failed to send webhook event! Invalid url?")
-                    },
-                    false,
-                    None,
-                );
-
-                rules.add_rule(
-                    |line| line.contains("logged in with Permissions:"),
-                    |line| match utils::extract_player_joined_name(line) {
-                        Some(name) => send_notifications(StandardServerEvents::PlayerJoined(name))
-                            .expect("Failed to send webhook event! Invalid url?"),
-                        None => error!("Failed to extract player name from:\n{line}"),
-                    },
-                    false,
-                    None,
-                );
-
-                rules.add_rule(
-                    |line| line.contains("[server] Remove Entity for Player"),
-                    |line| match utils::extract_player_left_name(line) {
-                        Some(name) => send_notifications(StandardServerEvents::PlayerLeft(name))
-                            .expect("Failed to send webhook event! Invalid url?"),
-                        None => error!("Failed to extract player name from:\n{line}"),
-                    },
-                    false,
-                    None,
-                );
+                // rules.add_rule(
+                //     |line| line.contains("[Session] 'HostOnline' (up)!"),
+                //     |_| {
+                //         send_notifications(StandardServerEvents::Started)
+                //             .expect("Failed to send webhook event! Invalid url?")
+                //     },
+                //     false,
+                //     None,
+                // );
+                //
+                // rules.add_rule(
+                //     |line| line.contains("logged in with Permissions:"),
+                //     |line| match utils::extract_player_joined_name(line) {
+                //         Some(name) => send_notifications(StandardServerEvents::PlayerJoined(name))
+                //             .expect("Failed to send webhook event! Invalid url?"),
+                //         None => error!("Failed to extract player name from:\n{line}"),
+                //     },
+                //     false,
+                //     None,
+                // );
+                //
+                // rules.add_rule(
+                //     |line| line.contains("[server] Remove Entity for Player"),
+                //     |line| match utils::extract_player_left_name(line) {
+                //         Some(name) => send_notifications(StandardServerEvents::PlayerLeft(name))
+                //             .expect("Failed to send webhook event! Invalid url?"),
+                //         None => error!("Failed to extract player name from:\n{line}"),
+                //     },
+                //     false,
+                //     None,
+                // );
             }
 
             gsm_monitor::start_instance_log_monitor(working_dir, rules);

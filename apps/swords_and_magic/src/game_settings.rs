@@ -1,8 +1,9 @@
+use gsm_serde::serde_ini::{IniHeader, from_str, to_string};
+use ini_derive::IniSerialize;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::Path;
-use gsm_serde::serde_ini::{IniHeader, to_string, from_str};
 
 /// Represents game settings in the server configuration.
 #[derive(Serialize, Deserialize, Debug, Clone, IniSerialize)]
@@ -27,7 +28,8 @@ pub struct GameSettings {
 impl Default for GameSettings {
     fn default() -> Self {
         Self {
-            owner_steam_id: env::var("SNM_OWNER_STEAM_ID").unwrap_or_else(|_| "00000000000000000".to_string()),
+            owner_steam_id: env::var("SNM_OWNER_STEAM_ID")
+                .unwrap_or_else(|_| "00000000000000000".to_string()),
             max_players: env::var("SNM_MAX_PLAYERS")
                 .unwrap_or_else(|_| "16".to_string())
                 .parse()
@@ -36,7 +38,8 @@ impl Default for GameSettings {
                 .unwrap_or_else(|_| "1".to_string())
                 .parse()
                 .unwrap_or(1),
-            reset_time_of_day: env::var("SNM_RESET_TIME_OF_DAY").unwrap_or_else(|_| "00:00".to_string()),
+            reset_time_of_day: env::var("SNM_RESET_TIME_OF_DAY")
+                .unwrap_or_else(|_| "00:00".to_string()),
             reset_warnings_in_minutes: vec![60, 30, 5, 1],
         }
     }
