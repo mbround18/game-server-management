@@ -65,6 +65,15 @@ pub struct GameSettings {
     #[serde(rename = "PalDamageRateDefense")]
     pub pal_damage_rate_defense: f32,
 
+    #[serde(rename = "bAllowGlobalPalboxExport")]
+    pub allow_global_palbox_export: bool,
+
+    #[serde(rename = "bAllowGlobalPalboxImport")]
+    pub allow_global_palbox_import: bool,
+
+    #[serde(rename = "bCharacterRecreateInHardcore")]
+    pub character_recreate_in_hardcore: bool,
+
     #[serde(rename = "PlayerDamageRateAttack")]
     pub player_damage_rate_attack: f32,
 
@@ -258,6 +267,9 @@ pub struct GameSettings {
     #[serde(rename = "BanListURL")]
     pub ban_list_url: String,
 
+    #[serde(rename = "CrossplayPlatforms")]
+    pub crossplay_platforms: String, // Default (Steam,Xbox,PS5,Mac)
+
     // REST API and additional networking
     #[serde(rename = "RESTAPIEnabled")]
     pub restapi_enabled: bool,
@@ -270,9 +282,6 @@ pub struct GameSettings {
 
     #[serde(rename = "ChatPostLimitPerMinute")]
     pub chat_post_limit_per_minute: u16,
-
-    #[serde(rename = "AllowConnectPlatform")]
-    pub allow_connect_platform: String,
 
     #[serde(rename = "bIsUseBackupSaveData")]
     pub is_use_backup_save_data: bool,
@@ -308,6 +317,9 @@ impl GameSettings {
             pal_spawn_num_rate: 1.0,
             pal_damage_rate_attack: 1.0,
             pal_damage_rate_defense: 1.0,
+            allow_global_palbox_export: false,
+            allow_global_palbox_import: false,
+            character_recreate_in_hardcore: false,
             player_damage_rate_attack: 1.0,
             player_damage_rate_defense: 1.0,
             player_stomach_decrease_rate: 1.0,
@@ -374,7 +386,7 @@ impl GameSettings {
             restapi_port: 8212,
             show_player_list: false,
             chat_post_limit_per_minute: 10,
-            allow_connect_platform: "Steam".to_string(),
+            crossplay_platforms: "(Steam,Xbox,PS5,Mac)".to_string(),
             is_use_backup_save_data: true,
             log_format_type: "Text".to_string(),
             supply_drop_span: 180.0,
@@ -419,10 +431,10 @@ impl GameSettings {
                 self.pal_spawn_num_rate = 1.0;
                 self.pal_damage_rate_attack = 0.5;
                 self.pal_damage_rate_defense = 2.0;
-                self.player_damage_rate_attack = 0.7;
                 self.player_damage_rate_defense = 4.0;
                 self.player_stomach_decrease_rate = 1.0;
                 self.player_stamina_decrease_rate = 1.0;
+                self.player_damage_rate_attack = 0.7;
                 self.player_auto_hp_regen_rate = 0.6;
                 self.player_auto_hp_regen_rate_in_sleep = 0.6;
                 self.build_object_damage_rate = 0.7;
@@ -482,6 +494,21 @@ impl Default for GameSettings {
                 "PAL_DAMAGE_RATE_DEFENSE",
                 settings.pal_damage_rate_defense,
                 f32
+            ),
+            allow_global_palbox_export: env_parse!(
+                "B_ALLOW_GLOBAL_PALBOX_EXPORT",
+                settings.allow_global_palbox_export,
+                bool
+            ),
+            allow_global_palbox_import: env_parse!(
+                "B_ALLOW_GLOBAL_PALBOX_IMPORT",
+                settings.allow_global_palbox_import,
+                bool
+            ),
+            character_recreate_in_hardcore: env_parse!(
+                "B_CHARACTER_RECREATE_IN_HARDCORE",
+                settings.character_recreate_in_hardcore,
+                bool
             ),
             player_damage_rate_attack: env_parse!(
                 "PLAYER_DAMAGE_RATE_ATTACK",
@@ -705,8 +732,8 @@ impl Default for GameSettings {
                 settings.chat_post_limit_per_minute,
                 u16
             ),
-            allow_connect_platform: env::var("ALLOW_CONNECT_PLATFORM")
-                .unwrap_or_else(|_| settings.allow_connect_platform.clone()),
+            crossplay_platforms: env::var("CROSSPLAY_PLATFORMS")
+                .unwrap_or_else(|_| settings.crossplay_platforms.clone()),
             is_use_backup_save_data: env_parse!(
                 "IS_USE_BACKUP_SAVE_DATA",
                 settings.is_use_backup_save_data,

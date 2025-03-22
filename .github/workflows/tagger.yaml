@@ -6,11 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: 'Run the tagger without actually tagging'
+        description: "Run the tagger without actually tagging"
         required: false
         type: boolean
         default: false
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
