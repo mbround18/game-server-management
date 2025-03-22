@@ -3,19 +3,18 @@ description: >
   Automates version bumping, CHANGELOG updates, git tagging,
   and downstream dependency updates for Rust crates located under ./apps/.
 author: mbround18
-
 inputs:
   token:
-    description: 'GitHub token'
+    description: "GitHub token"
     required: true
   dry-run:
-    description: 'Run the tagger without actually tagging'
+    description: "Run the tagger without actually tagging"
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: "docker"
+  image: "Dockerfile"
   env:
     GITHUB_TOKEN: ${{ inputs.token }}
     DRY_RUN: ${{ inputs.dry-run }}

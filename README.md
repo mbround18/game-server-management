@@ -21,7 +21,7 @@ We are dedicated to empowering game server administrators by seamlessly integrat
 | Game       | Repository                                                          | Status         |
 | ---------- | ------------------------------------------------------------------- | -------------- |
 | Valheim    | [Valheim Docker](https://github.com/mbround18/valheim-docker)       | Origin         |
-| Palworld   | [Palworld Docker](https://github.com/mbround18/palworld-docker)     | ![ready] |
+| Palworld   | [Palworld Docker](https://github.com/mbround18/palworld-docker)     | ![ready]       |
 | Enshrouded | [Enshrouded Docker](https://github.com/mbround18/enshrouded-docker) | ![development] |
 
 ## Repository Structure
