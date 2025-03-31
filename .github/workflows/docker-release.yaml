@@ -14,12 +14,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
-env:
-  BUIlD_ARG_OWNER: mbround18
-  BUILD_ARG_REPO: ${{ github.event.repository.name }}
-  BUILD_ARG_RUN_ID: ${{ github.run_id }}
-  BUILD_ARG_ARTIFACT_NAME: release
-
 jobs:
   collect-apps:
     runs-on: ubuntu-latest
@@ -69,6 +63,7 @@ jobs:
       # app_name plus dash for the version.
       semver_prefix: ${{ matrix.app_name }}-
       download_artifact: rust-release
+      download_artifact_destination: target/release
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
