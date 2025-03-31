@@ -13,7 +13,7 @@ jobs:
   collect-apps:
     runs-on: ubuntu-latest
     outputs:
-      app_matrix: ${{ steps.set-matrix.outputs.app_matrix }}
+      app_matrix: ${{ steps.set-app-matrix.outputs.app_matrix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -25,20 +25,14 @@ jobs:
           asset: "jq-linux-amd64"
           override-name: "jq"
 
-      - name: Find and process Cargo.toml files
-        id: find-cargo-files
-        run: |
-          echo "Found the following Cargo.toml files in ./apps/:"
-          find ./apps -name "Cargo.toml" -type f | tee /dev/tty
-
       - name: Extract package names and create matrix
-        id: set-matrix
+        id: set-app-matrix
         run: |
           # Extract package names from Cargo.toml files
           app_names=$(find ./apps -name "Cargo.toml" -type f | xargs -I{} grep -l "^\[package\]" {} | xargs -I{} bash -c 'grep -m1 "^name" {} | sed -E "s/name[[:space:]]*=[[:space:]]*\"([^\"]*)\"/\1/"')
 
           # Use jq to create the JSON array of objects with 'name' property
-          app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"name": .})')
+          app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"app_name": .})')
 
           echo "app_matrix=${app_matrix}" >> $GITHUB_OUTPUT
           echo "Generated matrix: ${app_matrix}"
@@ -51,6 +45,6 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
     with:
       image: mbround18/gsm-reference
-      semver_prefix: ${{ matrix.name }}
+      semver_prefix: ${{ matrix.app_name }}
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
