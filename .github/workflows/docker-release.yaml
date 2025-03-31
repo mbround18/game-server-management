@@ -1,6 +1,9 @@
 name: Docker Release
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -10,6 +13,12 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
+
+env:
+  BUIlD_ARG_OWNER: mbround18
+  BUILD_ARG_REPO: ${{ github.event.repository.name }}
+  BUILD_ARG_RUN_ID: ${{ github.run_id }}
+  BUILD_ARG_ARTIFACT_NAME: release
 
 jobs:
   collect-apps:
@@ -42,21 +51,29 @@ jobs:
 
           echo "Generated matrix: ${app_matrix}"
 
+  rust:
+    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
+
   release:
+    if: ${{ github.ref_name == 'main' }}
     needs:
       - collect-apps
+      - rust
     strategy:
       matrix:
         include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
     uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
     with:
       image: mbround18/gsm-reference
+      target: gh-release
       # app_name plus dash for the version.
       semver_prefix: ${{ matrix.app_name }}-
+      download_artifact: rust-release
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   tagger:
+    if: ${{ github.ref_name == 'main' }}
     needs:
       - collect-apps
       - release
@@ -80,7 +97,7 @@ jobs:
         run: |
           git config --local user.name "GitHub Action"
           git config --local user.email "actions@no-reply.github.com"
-          
+
           echo "Creating tag for ${{ matrix.app_name }}"
           git tag -a "${{ steps.semver.outputs.new_version }}" -m "Release ${{ steps.semver.outputs.new_version }}"
           git push origin "${{ steps.semver.outputs.new_version }}"
