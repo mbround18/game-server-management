@@ -34,7 +34,7 @@ jobs:
           # Use jq to create the JSON array of objects with 'name' property
           app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"app_name": .})')
 
-          echo "app_matrix=${app_matrix}" >> $GITHUB_OUTPUT
+          echo "app_matrix=$(echo ${app_matrix} | tr -d '\n' | xargs)" >> $GITHUB_OUTPUT          
           echo "Generated matrix: ${app_matrix}"
 
   Release:
