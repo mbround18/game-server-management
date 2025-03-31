@@ -5,4 +5,4 @@ edition = "2024"
 
 [lib]
 path = "src/lib.rs"
-proc-macro = false  # Enable procedural macro support
+proc-macro = false

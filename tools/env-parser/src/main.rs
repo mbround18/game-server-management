@@ -113,7 +113,7 @@ fn extract_env_vars_from_file(
         ),
         (
             // More flexible approach with optional whitespace after 'env_parse!' and optional trailing comma.
-            r#"(?s)env_parse!\s*\(\s*"([A-Z0-9_]+)"\s*,\s*(.*?)\s*,\s*([a-zA-Z0-9_:<>]+)\s*\)(?:,)?"#,
+            r#"(?s)env_parse!\s*\(\s*\"([A-Z0-9_]+)\"\s*,\s*(.*?)\s*,\s*([a-zA-Z0-9_:<>]+)\s*\)(?:,)?"#,
             Some((1, None, Some(3))),
             None,
         ),
