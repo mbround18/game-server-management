@@ -33,12 +33,16 @@ jobs:
 
           # Use jq to create the JSON array of objects with 'name' property
           app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"app_name": .})')
+          
+          echo "app_matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "${app_matrix}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT       
 
-          echo "app_matrix=$(echo ${app_matrix} | tr -d '\n' | xargs)" >> $GITHUB_OUTPUT          
           echo "Generated matrix: ${app_matrix}"
 
   Release:
-    needs: collect-apps
+    needs:
+      - collect-apps
     strategy:
       matrix:
         include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
