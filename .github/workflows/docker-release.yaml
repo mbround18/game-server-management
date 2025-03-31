@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - README.md
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
@@ -33,7 +35,7 @@ jobs:
 
           # Use jq to create the JSON array of objects with 'name' property
           app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"app_name": .})')
-          
+
           echo "app_matrix<<EOF" >> $GITHUB_OUTPUT
           echo "${app_matrix}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT       
@@ -49,7 +51,31 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
     with:
       image: mbround18/gsm-reference
-      # app_name plus dash for the version.
-      semver_prefix: ${{ matrix.app_name }}-
+      semver_prefix: ${{ matrix.app_name }}
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+  Tagger:
+    needs:
+      - collect-apps
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: "${{ secrets.GH_TOKEN }}"
+          fetch-depth: 0
+
+      - uses: mbround18/gh-reusable/actions/semver@main
+        id: semver
+        with:
+          prefix: ${{ matrix.app_name }}
+
+      - name: Create tag
+        id: create-tag
+        run: |
+          echo "Creating tag for ${{ matrix.app_name }}"
+          git tag -a "${{ steps.semver.outputs.tag }}" -m "Release ${{ steps.semver.outputs.tag }}"
+          git push origin "${{ steps.semver.outputs.tag }}"
