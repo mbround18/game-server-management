@@ -42,7 +42,7 @@ jobs:
 
           echo "Generated matrix: ${app_matrix}"
 
-  Release:
+  release:
     needs:
       - collect-apps
     strategy:
@@ -56,9 +56,10 @@ jobs:
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
-  Tagger:
+  tagger:
     needs:
       - collect-apps
+      - release
     strategy:
       matrix:
         include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
