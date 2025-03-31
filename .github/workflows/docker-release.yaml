@@ -63,7 +63,7 @@ jobs:
       # app_name plus dash for the version.
       semver_prefix: ${{ matrix.app_name }}-
       download_artifact: rust-release
-      download_artifact_destination: target/release
+      download_artifact_destination: dist
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
