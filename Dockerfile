@@ -50,7 +50,7 @@ ARG ARTIFACT_NAME
 
 WORKDIR /app
 
-COPY --chmod=0755 ./target/release .
+COPY --chmod=0755 ./dist .
 
 CMD ["bash"]
 
