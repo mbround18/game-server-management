@@ -52,7 +52,7 @@ jobs:
           echo "Generated matrix: ${app_matrix}"
 
   rust:
-    uses: mbround18/gh-reusable/.github/workflows/rust-build-and-test.yaml@main
+    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
 
   release:
     if: ${{ github.ref_name == 'main' }}
