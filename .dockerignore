@@ -3,3 +3,5 @@ target/
 *.yaml
 *.md
 tmp/
+variables.json
+renovate.json

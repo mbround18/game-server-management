@@ -1,0 +1,8 @@
+[package]
+name = "env-parse"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+proc-macro = false  # Enable procedural macro support

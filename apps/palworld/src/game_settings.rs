@@ -1,18 +1,10 @@
+use env_parse::env_parse;
 use gsm_serde::serde_ini::{IniHeader, to_string};
 use ini_derive::IniSerialize;
 use serde::{Deserialize, Serialize};
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::{env, fs};
-
-macro_rules! env_parse {
-    ($env_var:expr, $default:expr, $t:ty) => {
-        std::env::var($env_var)
-            .ok()
-            .and_then(|s| s.parse::<$t>().ok())
-            .unwrap_or($default)
-    };
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]

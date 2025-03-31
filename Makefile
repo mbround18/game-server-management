@@ -1,4 +1,4 @@
-.PHONY: build lint test docker-build docker-push
+.PHONY: docs build lint test docker-build docker-push
 
 GIT_TAG := $(shell git rev-parse --short HEAD)
 export COMPOSE_BAKE=true
@@ -20,3 +20,6 @@ docker-build: build
 
 docker-push: docker-build
 	docker push mbround18/gsm-reference:sha-$(GIT_TAG)
+
+docs: lint
+	cargo run --bin env-parser -- ./apps

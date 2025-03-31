@@ -8,5 +8,5 @@ name = "gsm_monitor"
 path = "src/lib.rs"
 
 [dependencies]
-log = "0.4.26"
+log = "0.4.27"
 tracing = "0.1.41"
