@@ -59,7 +59,7 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
     with:
       image: mbround18/gsm-reference
-      target: gh-release
+      target: gh-runtime
       # app_name plus dash for the version.
       semver_prefix: ${{ matrix.app_name }}-
       download_artifact: rust-release
