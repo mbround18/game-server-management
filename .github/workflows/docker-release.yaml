@@ -1,6 +1,9 @@
 name: Docker Release
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -47,23 +50,12 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT       
 
           echo "Generated matrix: ${app_matrix}"
-  set-docker-env:
-    runs-on: ubuntu-latest
-
-    steps:
-      - run: |
-          echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
-          echo "BUILDKIT_INLINE_CACHE=1" >> $GITHUB_ENV
-          echo "DOCKER_DEFAULT_PLATFORM=linux/amd64" >> $GITHUB_ENV
-          echo "BUILD_ARG_OWNER=${{ env.BUIlD_ARG_OWNER }}" >> $GITHUB_ENV
-          echo "BUILD_ARG_REPO=${{ env.BUILD_ARG_REPO }}" >> $GITHUB_ENV
-          echo "BUILD_ARG_RUN_ID=${{ env.BUILD_ARG_RUN_ID }}" >> $GITHUB_ENV
-          echo "BUILD_ARG_ARTIFACT_NAME=${{ env.BUILD_ARG_ARTIFACT_NAME }}" >> $GITHUB_ENV
 
   rust:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-and-test.yaml@main
 
   release:
+    if: ${{ github.ref_name == 'main' }}
     needs:
       - collect-apps
       - rust
@@ -81,6 +73,7 @@ jobs:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   tagger:
+    if: ${{ github.ref_name == 'main' }}
     needs:
       - collect-apps
       - release
