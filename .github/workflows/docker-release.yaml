@@ -18,7 +18,7 @@ jobs:
       app_matrix: ${{ steps.set-app-matrix.outputs.app_matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install jq
         uses: mbround18/gh-reusable/actions/install-cli@main
@@ -51,7 +51,8 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
     with:
       image: mbround18/gsm-reference
-      semver_prefix: ${{ matrix.app_name }}
+      # app_name plus dash for the version.
+      semver_prefix: ${{ matrix.app_name }}-
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
