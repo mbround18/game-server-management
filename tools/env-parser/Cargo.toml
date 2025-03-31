@@ -1,0 +1,16 @@
+[package]
+name = "env-parser"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "env-parser"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.34", features = ["derive"] }
+tera = "1.20.0"
+regex = "1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+
