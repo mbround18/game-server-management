@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
@@ -45,7 +44,7 @@ fn find_cargo_toml_files(dir: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         let path = entry?.path();
         if path.is_dir() {
             result.extend(find_cargo_toml_files(path.to_str().unwrap())?);
-        } else if path.file_name().map_or(false, |f| f == "Cargo.toml") {
+        } else if path.file_name().is_some_and(|f| f == "Cargo.toml") {
             result.push(path);
         }
     }
@@ -80,7 +79,7 @@ fn find_rust_files(dir: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         let path = entry?.path();
         if path.is_dir() {
             rust_files.extend(find_rust_files(&path)?);
-        } else if path.extension().map_or(false, |e| e == "rs") {
+        } else if path.extension().is_some_and(|e| e == "rs") {
             rust_files.push(path);
         }
     }
@@ -96,11 +95,7 @@ fn extract_env_vars_from_file(
     // Each pattern is now in a raw string literal (r#"..."#),
     // which avoids having to escape backslashes multiple times.
     // We also allow multiline with (?s) and an optional trailing comma with (?:,)?
-    let patterns: Vec<(
-        &str,
-        Option<(usize, Option<usize>, Option<usize>)>,
-        Option<&str>,
-    )> = vec![
+    let patterns = vec![
         (
             r#"(?s)std::env::var\("([A-Z0-9_]+)"\)(?:,)?"#,
             Some((1, None, None)),
