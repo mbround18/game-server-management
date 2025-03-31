@@ -78,5 +78,5 @@ jobs:
         id: create-tag
         run: |
           echo "Creating tag for ${{ matrix.app_name }}"
-          git tag -a "${{ steps.semver.outputs.tag }}" -m "Release ${{ steps.semver.outputs.tag }}"
-          git push origin "${{ steps.semver.outputs.tag }}"
+          git tag -a "${{ steps.semver.outputs.new_version }}" -m "Release ${{ steps.semver.outputs.new_version }}"
+          git push origin "${{ steps.semver.outputs.new_version }}"
