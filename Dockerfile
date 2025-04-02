@@ -38,23 +38,6 @@ COPY --from=cacher /usr/local/cargo/registry /usr/local/cargo/registry
 RUN cargo build --release
 
 # Stage 5: Runtime
-FROM debian:12-slim AS gh-runtime
-# Install any runtime dependencies (adjust as needed)
-RUN apt-get update && apt-get install -y libssl-dev curl jq unzip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-ARG OWNER
-ARG REPO
-ARG RUN_ID
-ARG ARTIFACT_NAME
-
-WORKDIR /app
-
-COPY --chmod=0755 ./dist .
-
-CMD ["bash"]
-
-
 FROM debian:12-slim AS runtime
 # Install any runtime dependencies (adjust as needed)
 RUN apt-get update && apt-get install -y libssl-dev && \
