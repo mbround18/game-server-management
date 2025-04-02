@@ -49,7 +49,6 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
 
   release:
-    if: ${{ github.ref_name == 'main' }}
     needs:
       - collect-apps
       - rust
