@@ -5,7 +5,7 @@ edition = "2024"
 repository = "https://github.com/mbround18/enshrouded-docker"
 
 [dependencies]
-clap = { version = "4.5.34", features = ["derive"] }
+clap = { version = "4.5.35", features = ["derive"] }
 gsm-instance = {path = "../../libs/gsm-instance"}
 gsm-cron = {path = "../../libs/gsm-cron"}
 gsm-shared = {path = "../../libs/gsm-shared"}
