@@ -240,3 +240,103 @@ pub fn save_config(path: &Path, config: &ServerConfig) {
         let _ = fs::write(path, json);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::sync::Mutex;
+
+    lazy_static::lazy_static! {
+        static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
+    }
+
+    fn clear_env_vars() {
+        let vars = [
+            "PLAYER_HEALTH_FACTOR",
+            "PLAYER_MANA_FACTOR",
+            "PLAYER_STAMINA_FACTOR",
+            "EXPERIENCE_COMBAT_FACTOR",
+            "TOMBSTONE_MODE",
+            "THREAT_BONUS",
+        ];
+        for var in vars {
+            unsafe {
+                env::remove_var(var);
+            }
+        }
+    }
+
+    #[test]
+    fn test_default_settings() {
+        let _lock = TEST_MUTEX.lock().unwrap();
+        clear_env_vars();
+
+        let settings = GameSettings::default();
+
+        assert_eq!(settings.player_health_factor, 1.0);
+        assert_eq!(settings.player_mana_factor, 1.0);
+        assert_eq!(settings.tombstone_mode, "AddBackpackMaterials");
+    }
+
+    #[test]
+    fn test_env_override_f32() {
+        let _lock = TEST_MUTEX.lock().unwrap();
+        clear_env_vars();
+
+        unsafe {
+            env::set_var("PLAYER_HEALTH_FACTOR", "1.5");
+            env::set_var("EXPERIENCE_COMBAT_FACTOR", "3.0");
+        }
+
+        let settings = GameSettings::default();
+        assert_eq!(settings.player_health_factor, 1.5);
+        assert_eq!(settings.experience_combat_factor, 3.0);
+    }
+
+    #[test]
+    fn test_env_override_string() {
+        let _lock = TEST_MUTEX.lock().unwrap();
+        clear_env_vars();
+        unsafe {
+            env::set_var("TOMBSTONE_MODE", "Nothing");
+        }
+
+        let settings = GameSettings::default();
+        assert_eq!(settings.tombstone_mode, "Nothing");
+    }
+
+    #[test]
+    fn test_save_and_load_config() {
+        fs::create_dir_all("./tmp").unwrap();
+        let _lock = TEST_MUTEX.lock().unwrap();
+        clear_env_vars();
+
+        unsafe {
+            env::set_var("PLAYER_HEALTH_FACTOR", "1.5");
+            env::set_var("EXPERIENCE_COMBAT_FACTOR", "300.0");
+            env::set_var("TOMBSTONE_MODE", "Nothing");
+            env::set_var("THREAT_BONUS", "3.14");
+        }
+
+        let path = Path::new("./tmp/test_enshrouded_config.json");
+        fs::create_dir_all("./tmp").unwrap();
+        let _ = fs::remove_file(&path);
+
+        // Load with env override and save
+        let config = load_or_create_config(&path);
+        assert!(path.exists());
+
+        // Ensure env-injected threat_bonus persisted
+        assert!((config.game_settings.threat_bonus - 3.14).abs() < f32::EPSILON);
+
+        let raw = fs::read_to_string(&path).expect("failed to read config");
+        let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
+
+        let threat_bonus = json["gameSettings"]["threatBonus"]
+            .as_f64()
+            .expect("missing or invalid threatBonus");
+
+        assert!((threat_bonus - 3.14).abs() < f64::EPSILON);
+    }
+}
