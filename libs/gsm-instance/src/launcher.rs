@@ -6,18 +6,74 @@ use std::process::{Command, Stdio};
 use tracing::debug;
 use which::which;
 
+enum WindowsCompat {
+    Proton { path: String },
+    Wine { path: String },
+    UmuProton { path: String, dir: String },
+    None,
+}
+
+impl WindowsCompat {
+    fn create_command(&self, game_exe: &str) -> Option<Command> {
+        match self {
+            WindowsCompat::Proton { path } => {
+                let mut cmd = Command::new(path);
+                cmd.arg("run").arg(game_exe);
+                Some(cmd)
+            }
+            WindowsCompat::Wine { path } => {
+                let mut cmd = Command::new(path);
+                cmd.arg(game_exe);
+                Some(cmd)
+            }
+            WindowsCompat::UmuProton { path, dir } => {
+                let mut cmd = Command::new(path);
+                cmd.arg("--proton-dir").arg(dir).arg("--exe").arg(game_exe);
+                Some(cmd)
+            }
+            WindowsCompat::None => None,
+        }
+    }
+}
+
+fn find_windows_compatibility() -> WindowsCompat {
+    if let Some(umu_launcher) = find_umu_launcher() {
+        if let Ok(proton_dir) = find_proton_dir() {
+            return WindowsCompat::UmuProton {
+                path: umu_launcher,
+                dir: proton_dir,
+            };
+        }
+    }
+
+    if let Ok(proton_path) = find_proton() {
+        return WindowsCompat::Proton { path: proton_path };
+    }
+
+    if let Ok(wine_path) = find_wine() {
+        return WindowsCompat::Wine { path: wine_path };
+    }
+
+    WindowsCompat::None
+}
+
+fn find_umu_launcher() -> Option<String> {
+    which("umu-launcher")
+        .ok()
+        .and_then(|path| path.to_str().map(String::from))
+}
+
 fn find_proton() -> Result<String, String> {
     // Try glob search in common compatibility tools directories first
     let glob_patterns = [
-        "/home/steam/.steam/root/compatibilitytools.d/**/proton",
-        "/home/steam/.steam/steam/compatibilitytools.d/**/proton",
-        "~/.local/share/Steam/compatibilitytools.d/**/proton",
-        "~/.steam/root/compatibilitytools.d/**/proton",
-        "~/.steam/steam/compatibilitytools.d/**/proton",
+        "/home/steam/.steam/root/compatibilitytools.d/Proton*/proton",
+        "/home/steam/.steam/steam/compatibilitytools.d/Proton*/proton",
+        "~/.local/share/Steam/compatibilitytools.d/Proton*/proton",
+        "~/.steam/root/compatibilitytools.d/Proton*/proton",
+        "~/.steam/steam/compatibilitytools.d/Proton*/proton",
     ];
 
     for pattern in &glob_patterns {
-        debug!("Searching for Proton with pattern: {}", pattern);
         if let Ok(paths) = glob(pattern) {
             for path in paths.flatten() {
                 if path.is_file() {
@@ -49,7 +105,33 @@ fn find_proton() -> Result<String, String> {
     Err("No Proton installation found.".to_string())
 }
 
-fn fine_wine() -> Result<String, String> {
+fn find_proton_dir() -> Result<String, String> {
+    let glob_patterns = [
+        "/home/steam/.steam/root/compatibilitytools.d/*Proton*",
+        "/home/steam/.steam/steam/compatibilitytools.d/*Proton*",
+        "~/.local/share/Steam/compatibilitytools.d/*Proton*",
+        "~/.steam/root/compatibilitytools.d/*Proton*",
+        "~/.steam/steam/compatibilitytools.d/*Proton*",
+        "~/.local/share/Steam/steamapps/common/*Proton*",
+    ];
+
+    for pattern in &glob_patterns {
+        if let Ok(paths) = glob(pattern) {
+            for path in paths.flatten() {
+                if path.is_dir() {
+                    return path
+                        .to_str()
+                        .map(|s| s.to_string())
+                        .ok_or_else(|| "Failed to convert proton dir path to string.".to_string());
+                }
+            }
+        }
+    }
+
+    Err("No Proton directory found.".to_string())
+}
+
+fn find_wine() -> Result<String, String> {
     // Attempt to find 'wine64' first
     if let Ok(path) = which("wine64") {
         return path
@@ -108,23 +190,23 @@ fn fine_wine() -> Result<String, String> {
 /// ```
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
     let mut command = if config.force_windows {
-        // When force_windows is true, try to use Proton first, then fall back to Wine
-        match find_proton() {
-            Ok(proton_path) => {
-                debug!("Using Proton at: {}", proton_path);
-                let mut cmd = Command::new(proton_path);
-                cmd.arg("run").arg(&config.command);
-                cmd
+        // When force_windows is true, try to find a suitable Windows compatibility layer
+        let compat = find_windows_compatibility();
+
+        match &compat {
+            WindowsCompat::Proton { path } => debug!("Using Proton at: {}", path),
+            WindowsCompat::Wine { path } => debug!("Using Wine at: {}", path),
+            WindowsCompat::UmuProton { path, dir } => {
+                debug!("Using UMU Launcher at: {} with Proton dir: {}", path, dir)
             }
-            Err(_) => {
-                debug!("Proton not found, falling back to Wine");
-                let wine_path = fine_wine().map_err(InstanceError::Unknown)?;
-                debug!("Using Wine at: {}", wine_path);
-                let mut cmd = Command::new(wine_path);
-                cmd.arg(&config.command);
-                cmd
-            }
+            WindowsCompat::None => {}
         }
+
+        compat.create_command(&config.command).ok_or_else(|| {
+            InstanceError::CommandExecutionError(
+                "No suitable Windows compatibility layer found.".to_string(),
+            )
+        })?
     } else {
         Command::new(&config.command)
     };
@@ -207,5 +289,29 @@ mod tests {
         let mut child: Child = command.spawn().expect("Failed to spawn child process");
         let status = child.wait().expect("Failed to wait on child process");
         assert!(status.success());
+    }
+
+    #[test]
+    fn test_umu_proton_command_creation() {
+        let umu_path = "umu-launcher";
+        let proton_dir = "/path/to/proton";
+        let game_exe = "/path/to/game.exe";
+
+        let umu_proton = WindowsCompat::UmuProton {
+            path: umu_path.to_string(),
+            dir: proton_dir.to_string(),
+        };
+
+        let cmd_option = umu_proton.create_command(game_exe);
+        assert!(cmd_option.is_some());
+
+        let cmd = cmd_option.unwrap();
+        let args: Vec<_> = cmd.get_args().collect();
+
+        assert_eq!(args.len(), 4);
+        assert_eq!(args[0].to_str().unwrap(), "--proton-dir");
+        assert_eq!(args[1].to_str().unwrap(), proton_dir);
+        assert_eq!(args[2].to_str().unwrap(), "--exe");
+        assert_eq!(args[3].to_str().unwrap(), game_exe);
     }
 }
