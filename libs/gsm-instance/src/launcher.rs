@@ -9,14 +9,15 @@ use which::which;
 fn find_proton() -> Result<String, String> {
     // Try glob search in common compatibility tools directories first
     let glob_patterns = [
-        "/home/steam/.steam/root/compatibilitytools.d/Proton*/proton",
-        "/home/steam/.steam/steam/compatibilitytools.d/Proton*/proton",
-        "~/.local/share/Steam/compatibilitytools.d/Proton*/proton",
-        "~/.steam/root/compatibilitytools.d/Proton*/proton",
-        "~/.steam/steam/compatibilitytools.d/Proton*/proton",
+        "/home/steam/.steam/root/compatibilitytools.d/**/proton",
+        "/home/steam/.steam/steam/compatibilitytools.d/**/proton",
+        "~/.local/share/Steam/compatibilitytools.d/**/proton",
+        "~/.steam/root/compatibilitytools.d/**/proton",
+        "~/.steam/steam/compatibilitytools.d/**/proton",
     ];
 
     for pattern in &glob_patterns {
+        debug!("Searching for Proton with pattern: {}", pattern);
         if let Ok(paths) = glob(pattern) {
             for path in paths.flatten() {
                 if path.is_file() {
