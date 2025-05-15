@@ -5,6 +5,25 @@ use std::process::{Command, Stdio};
 use tracing::debug;
 use which::which;
 
+fn find_proton() -> Result<String, String> {
+    // Common Proton paths
+    let proton_paths = [
+        "/usr/bin/proton",
+        "~/.local/share/Steam/steamapps/common/Proton",
+        "/usr/local/bin/proton",
+    ];
+
+    for path in &proton_paths {
+        if let Ok(path) = which(path) {
+            return path
+                .to_str()
+                .map(|s| s.to_string())
+                .ok_or_else(|| "Failed to convert proton path to string.".to_string());
+        }
+    }
+    Err("No Proton installation found.".to_string())
+}
+
 fn fine_wine() -> Result<String, String> {
     // Attempt to find 'wine64' first
     if let Ok(path) = which("wine64") {
@@ -64,10 +83,23 @@ fn fine_wine() -> Result<String, String> {
 /// ```
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
     let mut command = if config.force_windows {
-        // When force_windows is true, prefix with "wine64"
-        let mut cmd = Command::new(fine_wine().map_err(InstanceError::Unknown)?);
-        cmd.arg(&config.command);
-        cmd
+        // When force_windows is true, try to use Proton first, then fall back to Wine
+        match find_proton() {
+            Ok(proton_path) => {
+                debug!("Using Proton at: {}", proton_path);
+                let mut cmd = Command::new(proton_path);
+                cmd.arg("run").arg(&config.command);
+                cmd
+            }
+            Err(_) => {
+                debug!("Proton not found, falling back to Wine");
+                let wine_path = fine_wine().map_err(InstanceError::Unknown)?;
+                debug!("Using Wine at: {}", wine_path);
+                let mut cmd = Command::new(wine_path);
+                cmd.arg(&config.command);
+                cmd
+            }
+        }
     } else {
         Command::new(&config.command)
     };
@@ -123,6 +155,8 @@ mod tests {
 
     /// Creates a basic InstanceConfig for testing the launcher.
     fn test_config(force_windows: bool) -> InstanceConfig {
+        let temp_dir = tempdir().unwrap();
+        let dir_path = temp_dir.path().to_path_buf();
         InstanceConfig {
             app_id: 123456,
             name: "TestServer".to_string(),
@@ -130,7 +164,7 @@ mod tests {
             install_args: vec![],
             launch_args: vec![dummy_arg()],
             force_windows,
-            working_dir: tempdir().unwrap().into_path(),
+            working_dir: dir_path,
         }
     }
 
