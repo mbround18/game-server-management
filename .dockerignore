@@ -5,3 +5,12 @@ target/
 tmp/
 variables.json
 renovate.json
+**/tmp/
+*.md
+*.yaml
+*.yml
+*.json
+*.log
+*.zip
+*.tar*
+
