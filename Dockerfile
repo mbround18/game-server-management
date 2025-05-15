@@ -1,5 +1,5 @@
 # Stage 1: Base Image
-FROM rust:1.85 AS base
+FROM rust:1.87 AS base
 
 # Install necessary build tools
 RUN apt-get update && apt-get install -y cmake

@@ -1,19 +1,42 @@
 use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
+use glob::glob;
 use std::fs::File;
 use std::process::{Command, Stdio};
 use tracing::debug;
 use which::which;
 
 fn find_proton() -> Result<String, String> {
-    // Common Proton paths
-    let proton_paths = [
+    // Try glob search in common compatibility tools directories first
+    let glob_patterns = [
+        "/home/steam/.steam/root/compatibilitytools.d/Proton*/proton",
+        "/home/steam/.steam/steam/compatibilitytools.d/Proton*/proton",
+        "~/.local/share/Steam/compatibilitytools.d/Proton*/proton",
+        "~/.steam/root/compatibilitytools.d/Proton*/proton",
+        "~/.steam/steam/compatibilitytools.d/Proton*/proton",
+    ];
+
+    for pattern in &glob_patterns {
+        if let Ok(paths) = glob(pattern) {
+            for path in paths.flatten() {
+                if path.is_file() {
+                    return path
+                        .to_str()
+                        .map(|s| s.to_string())
+                        .ok_or_else(|| "Failed to convert proton path to string.".to_string());
+                }
+            }
+        }
+    }
+
+    // If glob search failed, try specific paths
+    let fallback_paths = [
         "/usr/bin/proton",
-        "~/.local/share/Steam/steamapps/common/Proton",
+        "~/.local/share/Steam/steamapps/common/Proton/proton",
         "/usr/local/bin/proton",
     ];
 
-    for path in &proton_paths {
+    for path in &fallback_paths {
         if let Ok(path) = which(path) {
             return path
                 .to_str()
@@ -21,6 +44,7 @@ fn find_proton() -> Result<String, String> {
                 .ok_or_else(|| "Failed to convert proton path to string.".to_string());
         }
     }
+
     Err("No Proton installation found.".to_string())
 }
 

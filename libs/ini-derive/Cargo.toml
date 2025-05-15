@@ -9,7 +9,7 @@ proc-macro = true  # Enable procedural macro support
 
 
 [dependencies]
-syn = { version = "2.0", features = ["derive", "parsing"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+syn = { version = "2.0.101", features = ["derive", "parsing"] }
+quote = "1.0.40"
+proc-macro2 = "1.0.95"
 
