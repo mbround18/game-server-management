@@ -323,12 +323,11 @@ mod tests {
     #[test]
     fn test_umu_proton_command_creation() {
         let umu_path = "umu-launcher";
-        let proton_dir = "/path/to/proton";
+        // let proton_dir = "/path/to/proton";
         let game_exe = "/path/to/game.exe";
 
         let umu_proton = WindowsCompat::UmuProton {
-            path: umu_path.to_string(),
-            dir: proton_dir.to_string(),
+            path: umu_path.to_string(), // dir: proton_dir.to_string(),
         };
 
         let cmd_option = umu_proton.create_command(game_exe);
