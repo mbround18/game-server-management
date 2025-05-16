@@ -10,7 +10,7 @@ use std::path::PathBuf;
 /// - `install_args`: Additional arguments to pass to steamcmd during install/update.
 /// - `launch_args`: Additional arguments to pass when launching the server.
 /// - `force_windows`: If true, forces the Windows version to be installed/used,
-///    which may be needed for launching with Wine64.
+///   which may be needed for launching with Wine64.
 /// - `working_dir`: The working directory where the server will be installed and run.
 ///
 /// # Example

@@ -29,7 +29,7 @@ fn move_and_normalize_to_temp(src_dir: &Path, temp_root: &Path) -> std::io::Resu
         // Compute the relative path to src_dir.
         let relative_path = src_path
             .strip_prefix(src_dir)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         // Normalize the relative path by replacing backslashes with forward slashes.
         let normalized_relative_path = normalize_path(relative_path);
         let temp_dest_path = temp_root.join(&normalized_relative_path);
@@ -52,7 +52,7 @@ fn move_normalized_back(temp_root: &Path, src_dir: &Path) -> std::io::Result<()>
         let entry_path = entry.path();
         let relative_path = entry_path
             .strip_prefix(temp_root)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         let original_dest_path = src_dir.join(relative_path);
 
         if entry_path.is_dir() {
