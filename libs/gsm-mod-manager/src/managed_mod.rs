@@ -9,7 +9,7 @@ use fs_extra::dir;
 use fs_extra::dir::CopyOptions;
 use reqwest::Url;
 use std::convert::TryFrom;
-use std::fs::{File, create_dir_all};
+use std::fs::{create_dir_all, File};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use tracing::{debug, error};

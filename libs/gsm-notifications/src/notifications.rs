@@ -1,4 +1,4 @@
-use crate::{NotificationError, send_notification};
+use crate::{send_notification, NotificationError};
 use gsm_shared::fetch_var;
 use tracing::debug;
 

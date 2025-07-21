@@ -1,14 +1,17 @@
 [workspace]
-members = [
-    "libs/*",
-    "apps/*",
-    "tools/*"
-]
+members = ["libs/*", "apps/*", "tools/*"]
 resolver = "3"
 
-[profile.dev]
-opt-level = 0
-
 [profile.release]
-opt-level = 3
+opt-level = "z"          # Optimize for binary size (use "3" for performance)
+lto = true               # Enable Link Time Optimization
+codegen-units = 1        # Better optimization at cost of compile time
+debug = false            # No debug symbols
+overflow-checks = false # Disable overflow checks for speed
 
+[profile.dev]
+opt-level = 0            # No optimizations
+debug = true             # Include debug info
+overflow-checks = true  # Safer in development
+incremental = true       # Speed up rebuilds
+codegen-units = 256      # Default (improves incremental builds)
