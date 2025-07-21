@@ -57,15 +57,15 @@ async fn main() {
             let mut args = vec!["./PalServer.sh".to_string()];
 
             if let Ok(public_ip) = env::var("PUBLIC_IP") {
-                args.push(format!("-publicip={}", public_ip));
+                args.push(format!("-publicip={public_ip}"));
             }
 
             if let Some(public_port) = env::var("PORT").ok().or(Some("8211".to_string())) {
-                args.push(format!("-port={}", public_port));
+                args.push(format!("-port={public_port}"));
             }
 
             if let Some(public_port) = env::var("PUBLIC_PORT").ok().or(Some("8211".to_string())) {
-                args.push(format!("-publicport={}", public_port));
+                args.push(format!("-publicport={public_port}"));
             }
 
             if is_env_var_truthy("PUBLIC_LOBBY") {

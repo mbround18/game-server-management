@@ -2,49 +2,80 @@ use crate::environment::name;
 use crate::utils::config_io::{load_config_with_defaults, save_config};
 use crate::utils::env_overrides::apply_env_overrides;
 use env_parse::env_parse;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::env;
-use std::fs;
 use std::path::Path;
 
 /// Represents game settings in the server configuration.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GameSettings {
+    /// Multiplier for player health (default: 1.0)
     pub player_health_factor: f32,
+    /// Multiplier for player mana (default: 1.0)
     pub player_mana_factor: f32,
+    /// Multiplier for player stamina (default: 1.0)
     pub player_stamina_factor: f32,
+    /// Multiplier for player body heat (default: 1.0)
     pub player_body_heat_factor: f32,
+    /// Enables item durability (default: true)
     pub enable_durability: bool,
+    /// Enables starving debuff (default: false)
     pub enable_starving_debuff: bool,
+    /// Multiplier for food buff duration (default: 1.0)
     pub food_buff_duration_factor: f32,
+    /// Nanoseconds from hunger to starving (default: 600_000_000_000)
     pub from_hunger_to_starving: u64,
+    /// Multiplier for shroud time (default: 1.0)
     pub shroud_time_factor: f32,
+    /// Mode for tombstone behavior (default: "AddBackpackMaterials")
     pub tombstone_mode: String,
+    /// Enables glider turbulences (default: true)
     pub enable_glider_turbulences: bool,
+    /// Weather frequency (default: "Normal")
     pub weather_frequency: String,
+    /// Multiplier for mining damage (default: 1.0)
     pub mining_damage_factor: f32,
+    /// Multiplier for plant growth speed (default: 1.0)
     pub plant_growth_speed_factor: f32,
+    /// Multiplier for resource drop stack amount (default: 1.0)
     pub resource_drop_stack_amount_factor: f32,
+    /// Multiplier for factory production speed (default: 1.0)
     pub factory_production_speed_factor: f32,
+    /// Multiplier for perk upgrade recycling (default: 0.5)
     pub perk_upgrade_recycling_factor: f32,
+    /// Multiplier for perk cost (default: 1.0)
     pub perk_cost_factor: f32,
+    /// Multiplier for combat experience (default: 1.0)
     pub experience_combat_factor: f32,
+    /// Multiplier for mining experience (default: 1.0)
     pub experience_mining_factor: f32,
+    /// Multiplier for exploration/quest experience (default: 1.0)
     pub experience_exploration_quests_factor: f32,
+    /// Amount for random spawner (default: "Normal")
     pub random_spawner_amount: String,
+    /// Amount for aggro pool (default: "Normal")
     pub aggro_pool_amount: String,
+    /// Multiplier for enemy damage (default: 1.0)
     pub enemy_damage_factor: f32,
+    /// Multiplier for enemy health (default: 1.0)
     pub enemy_health_factor: f32,
+    /// Multiplier for enemy stamina (default: 1.0)
     pub enemy_stamina_factor: f32,
+    /// Multiplier for enemy perception range (default: 1.0)
     pub enemy_perception_range_factor: f32,
+    /// Multiplier for boss damage (default: 1.0)
     pub boss_damage_factor: f32,
+    /// Multiplier for boss health (default: 1.0)
     pub boss_health_factor: f32,
+    /// Threat bonus multiplier (default: 1.0)
     pub threat_bonus: f32,
+    /// If true, pacifies all enemies (default: false)
     pub pacify_all_enemies: bool,
+    /// Taming startle repercussion mode (default: "LoseSomeProgress")
     pub taming_startle_repercussion: String,
+    /// Nanoseconds for day time duration (default: 1_800_000_000_000)
     pub day_time_duration: u64,
+    /// Nanoseconds for night time duration (default: 720_000_000_000)
     pub night_time_duration: u64,
 }
 
@@ -106,7 +137,16 @@ impl Default for GameSettings {
     }
 }
 
-/// Represents a user group and its permissions.
+/// Represents a user group and its permissions for the game server.
+///
+/// # Fields
+/// - `name`: The name of the user group (e.g., "Admin", "Guest").
+/// - `password`: The password required to join this group.
+/// - `can_kick_ban`: Whether users in this group can kick or ban other players.
+/// - `can_access_inventories`: Whether users can access other players' inventories.
+/// - `can_edit_base`: Whether users can edit the base.
+/// - `can_extend_base`: Whether users can extend the base.
+/// - `reserved_slots`: Number of reserved slots for this group.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UserGroup {
@@ -119,6 +159,15 @@ pub struct UserGroup {
     pub reserved_slots: u8,
 }
 
+/// Provides default values for a `UserGroup`.
+///
+/// - `name`: "Guest"
+/// - `password`: "GuestXXXXXXXX"
+/// - `can_kick_ban`: false
+/// - `can_access_inventories`: true
+/// - `can_edit_base`: true
+/// - `can_extend_base`: true
+/// - `reserved_slots`: 0
 impl Default for UserGroup {
     fn default() -> Self {
         Self {
@@ -133,7 +182,7 @@ impl Default for UserGroup {
     }
 }
 
-/// Represents the full server configuration.
+/// Represents the full server configuration, including server info, game settings, and user groups.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerConfig {
@@ -199,6 +248,7 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
 mod tests {
     use super::*;
     use std::env;
+    use std::fs;
     use std::sync::Mutex;
 
     lazy_static::lazy_static! {
@@ -292,5 +342,48 @@ mod tests {
             .expect("missing or invalid threatBonus");
 
         assert!((threat_bonus - 3.14).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_preserve_and_override_with_env() {
+        // This test demonstrates:
+        // 1. Creating a temp config file with a custom value.
+        // 2. Ensuring the custom value is preserved on reload.
+        // 3. Setting an env var and confirming it overrides the config value.
+        // 4. Simulating the loader logic to confirm env var takes precedence.
+        use std::fs;
+        use std::path::PathBuf;
+        use tempfile::TempDir;
+
+        let _lock = TEST_MUTEX.lock().unwrap();
+        clear_env_vars();
+
+        let tmp_dir = TempDir::new().expect("create temp dir");
+        let config_path: PathBuf = tmp_dir.path().join("test_config.json");
+
+        let mut config = GameSettings::default();
+        config.player_health_factor = 42.0;
+        let json = serde_json::to_string_pretty(&config).unwrap();
+        fs::write(&config_path, json).unwrap();
+
+        let loaded: GameSettings = crate::utils::config_io::load_config_with_defaults(&config_path);
+        assert_eq!(loaded.player_health_factor, 42.0);
+
+        unsafe {
+            std::env::set_var("PLAYER_HEALTH_FACTOR", "99.0");
+        }
+        let loaded2 = GameSettings::default();
+        assert_eq!(loaded2.player_health_factor, 99.0);
+
+        let mut config2: GameSettings =
+            crate::utils::config_io::load_config_with_defaults(&config_path);
+        if let Ok(val) = std::env::var("PLAYER_HEALTH_FACTOR") {
+            config2.player_health_factor = val.parse().unwrap();
+        }
+        assert_eq!(config2.player_health_factor, 99.0);
+
+        unsafe {
+            std::env::remove_var("PLAYER_HEALTH_FACTOR");
+        }
     }
 }

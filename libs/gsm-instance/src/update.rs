@@ -71,7 +71,7 @@ fn extract_build_id_from_manifest(manifest: &str) -> &str {
     if let Some(caps) = re.captures(manifest) {
         caps.get(1).map_or("", |m| m.as_str())
     } else {
-        panic!("Failed to extract buildid from manifest:\n{}", manifest);
+        panic!("Failed to extract buildid from manifest:\n{manifest}");
     }
 }
 
@@ -83,7 +83,7 @@ fn extract_build_id_from_app_info(app_info: &str) -> &str {
     if let Some(caps) = re.captures(app_info) {
         caps.get(1).map_or("", |m| m.as_str())
     } else {
-        panic!("Failed to extract buildid from appinfo:\n{}", app_info);
+        panic!("Failed to extract buildid from appinfo:\n{app_info}");
     }
 }
 
@@ -127,7 +127,7 @@ pub fn update_server<P: AsRef<Path>>(
     );
     let login = "+login anonymous".to_string();
     let force_install_dir = format!("+force_install_dir {}", install_dir.as_ref().display());
-    let app_update = format!("+app_update {} validate", app_id);
+    let app_update = format!("+app_update {app_id} validate");
     let mut args = vec![force_install_dir, login, app_update];
 
     if force_windows {

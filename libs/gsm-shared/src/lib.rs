@@ -40,7 +40,7 @@ pub fn path_exists(path: &str) -> bool {
 pub fn parse_file_name(url: &Url, default: &str) -> String {
     String::from(
         url.path_segments()
-            .and_then(|segments| segments.last())
+            .and_then(|mut segments| segments.next_back())
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or(default),
     )
@@ -48,6 +48,10 @@ pub fn parse_file_name(url: &Url, default: &str) -> String {
 
 pub fn get_md5_hash(context: &str) -> String {
     format!("{:x}", md5::compute(context.as_bytes()))
+}
+
+pub fn url_parse_file_type(url: &str) -> String {
+    url.split('.').next_back().unwrap().to_string()
 }
 
 #[cfg(test)]
@@ -61,8 +65,4 @@ mod tests {
             "c3fcd3d76192e4007dfb496cca67e13b"
         );
     }
-}
-
-pub fn url_parse_file_type(url: &str) -> String {
-    url.split('.').last().unwrap().to_string()
 }
