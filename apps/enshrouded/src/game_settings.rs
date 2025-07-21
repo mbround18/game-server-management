@@ -320,7 +320,7 @@ mod tests {
             env::set_var("PLAYER_HEALTH_FACTOR", "1.5");
             env::set_var("EXPERIENCE_COMBAT_FACTOR", "300.0");
             env::set_var("TOMBSTONE_MODE", "Nothing");
-            env::set_var("THREAT_BONUS", "3.14");
+            env::set_var("THREAT_BONUS", "5.0");
         }
 
         let path = Path::new("./tmp/test_enshrouded_config.json");
@@ -332,7 +332,7 @@ mod tests {
         assert!(path.exists());
 
         // Ensure env-injected threat_bonus persisted
-        assert!((config.game_settings.threat_bonus - 3.14).abs() < f32::EPSILON);
+        assert!((config.game_settings.threat_bonus - 5.0).abs() < f32::EPSILON);
 
         let raw = fs::read_to_string(path).expect("failed to read config");
         let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
@@ -341,7 +341,11 @@ mod tests {
             .as_f64()
             .expect("missing or invalid threatBonus");
 
-        assert!((threat_bonus - 3.14).abs() < f64::EPSILON);
+        assert!((threat_bonus - 5.0).abs() < f64::EPSILON);
+
+        unsafe {
+            std::env::remove_var("THREAT_BONUS");
+        }
     }
 
     #[test]
@@ -361,12 +365,15 @@ mod tests {
         let tmp_dir = TempDir::new().expect("create temp dir");
         let config_path: PathBuf = tmp_dir.path().join("test_config.json");
 
-        let mut config = GameSettings::default();
-        config.player_health_factor = 42.0;
+        let config = GameSettings {
+            player_health_factor: 42.0,
+            ..Default::default()
+        };
+
         let json = serde_json::to_string_pretty(&config).unwrap();
         fs::write(&config_path, json).unwrap();
 
-        let loaded: GameSettings = crate::utils::config_io::load_config_with_defaults(&config_path);
+        let loaded: GameSettings = load_config_with_defaults(&config_path);
         assert_eq!(loaded.player_health_factor, 42.0);
 
         unsafe {
@@ -375,8 +382,7 @@ mod tests {
         let loaded2 = GameSettings::default();
         assert_eq!(loaded2.player_health_factor, 99.0);
 
-        let mut config2: GameSettings =
-            crate::utils::config_io::load_config_with_defaults(&config_path);
+        let mut config2: GameSettings = load_config_with_defaults(&config_path);
         if let Ok(val) = std::env::var("PLAYER_HEALTH_FACTOR") {
             config2.player_health_factor = val.parse().unwrap();
         }
