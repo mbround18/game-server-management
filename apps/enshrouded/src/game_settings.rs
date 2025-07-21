@@ -1,5 +1,8 @@
 use crate::environment::name;
+use crate::utils::config_io::{load_config_with_defaults, save_config};
+use crate::utils::env_overrides::apply_env_overrides;
 use env_parse::env_parse;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -183,62 +186,13 @@ impl Default for ServerConfig {
 /// Loads the configuration from a file or creates a new one with defaults.
 /// Environment variables override both file values and defaults.
 pub fn load_or_create_config(path: &Path) -> ServerConfig {
-    let mut config = if path.exists() {
-        match fs::read_to_string(path) {
-            Ok(contents) => serde_json::from_str::<ServerConfig>(&contents).unwrap_or_else(|_| {
-                eprintln!("Warning: Corrupt config file detected. Using defaults.");
-                ServerConfig::default()
-            }),
-            Err(_) => {
-                eprintln!("Failed to read config file. Using defaults.");
-                ServerConfig::default()
-            }
-        }
-    } else {
-        eprintln!("Config file not found. Creating default config.");
-        ServerConfig::default()
-    };
+    let mut config = load_config_with_defaults::<ServerConfig>(path);
 
     apply_env_overrides(&mut config);
 
     save_config(path, &config);
 
     config
-}
-
-/// Overrides configuration values using environment variables.
-fn apply_env_overrides(config: &mut ServerConfig) {
-    for (key, value) in env::vars() {
-        if let Some(stripped) = key.strip_prefix("SET_GROUP_") {
-            let mut parts = stripped.splitn(2, '_');
-            if let (Some(group_name), Some(field_name)) = (parts.next(), parts.next()) {
-                if let Some(group) = config
-                    .user_groups
-                    .iter_mut()
-                    .find(|g| g.name.eq_ignore_ascii_case(group_name))
-                {
-                    match field_name.to_lowercase().as_str() {
-                        "password" => group.password = value,
-                        "can_kick_ban" => {
-                            group.can_kick_ban = value.parse().unwrap_or(group.can_kick_ban)
-                        }
-                        "can_access_inventories" => {
-                            group.can_access_inventories =
-                                value.parse().unwrap_or(group.can_access_inventories)
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// Saves the configuration to a file.
-pub fn save_config(path: &Path, config: &ServerConfig) {
-    if let Ok(json) = serde_json::to_string_pretty(config) {
-        let _ = fs::write(path, json);
-    }
 }
 
 #[cfg(test)]

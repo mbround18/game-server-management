@@ -1,6 +1,6 @@
 mod environment;
 mod game_settings;
-mod utils;
+pub(crate) mod utils;
 
 use crate::environment::name;
 use clap::{Parser, Subcommand};
