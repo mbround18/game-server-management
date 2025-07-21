@@ -9,7 +9,7 @@ use fs_extra::dir;
 use fs_extra::dir::CopyOptions;
 use reqwest::Url;
 use std::convert::TryFrom;
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use tracing::{debug, error};
@@ -140,7 +140,8 @@ impl TryFrom<String> for ManagedMod {
             Ok(ManagedMod::new(&url, PathBuf::new(), PathBuf::new()))
         } else if let Some((author, mod_name, version)) = parse_mod_string(&url) {
             let constructed_url = format!(
-                "https://gcdn.thunderstore.io/live/repository/packages/{author}-{mod_name}-{version}.zip"
+                "https://gcdn.thunderstore.io/live/repository/packages/{}-{}-{}.zip",
+                author, mod_name, version
             );
             Ok(ManagedMod::new(
                 &constructed_url,

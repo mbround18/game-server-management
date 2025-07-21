@@ -49,7 +49,8 @@ impl Instance {
             Ok(())
         } else {
             Err(InstanceError::CommandExecutionError(format!(
-                "Install failed with status {status:?}"
+                "Install failed with status {:?}",
+                status
             )))
         }
     }

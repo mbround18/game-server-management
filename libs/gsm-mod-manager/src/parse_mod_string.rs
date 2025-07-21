@@ -41,7 +41,8 @@ mod tests {
             let result = parse_mod_string(mod_str);
             assert!(
                 result.is_some(),
-                "Failed to parse valid mod string: {mod_str}"
+                "Failed to parse valid mod string: {}",
+                mod_str
             );
         }
     }
@@ -57,7 +58,7 @@ mod tests {
 
         for mod_str in &mod_strings {
             let result = parse_mod_string(mod_str);
-            assert!(result.is_none(), "Parsed invalid mod string: {mod_str}");
+            assert!(result.is_none(), "Parsed invalid mod string: {}", mod_str);
         }
     }
 

@@ -88,7 +88,10 @@ impl ServerProcess {
     pub fn send_interrupt(&mut self, executable_name: &str) {
         let processes = self.find_processes(executable_name);
         if processes.is_empty() {
-            panic!("Failed to find process with executable name: {executable_name}");
+            panic!(
+                "Failed to find process with executable name: {}",
+                executable_name
+            );
         }
 
         for process in processes {

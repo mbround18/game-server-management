@@ -3,9 +3,9 @@
 //! The monitor continuously reads from a log file and processes each new line using the log rules
 //! defined in the `rules` module. It also detects if the file has been truncated or rotated and reopens it accordingly.
 
+use crate::LogRule;
 use crate::constants::INSTANCE_TARGET;
 use crate::rules::LogRules;
-use crate::LogRule;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::PathBuf;

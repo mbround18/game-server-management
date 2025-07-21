@@ -73,7 +73,7 @@ pub fn install<P: AsRef<Path>>(
     // Base SteamCMD arguments.
     let login = "+login anonymous".to_string();
     let force_install_dir = format!("+force_install_dir {}", install_dir.as_ref().display());
-    let app_update = format!("+app_update {app_id} validate");
+    let app_update = format!("+app_update {} validate", app_id);
 
     // Start building the argument list.
     let mut args = vec![force_install_dir, login, app_update];

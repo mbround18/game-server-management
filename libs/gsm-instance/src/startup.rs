@@ -3,7 +3,7 @@ use crate::errors::InstanceError;
 use crate::launcher::launch_server;
 use daemonize::Daemonize;
 use std::fs;
-use std::fs::{create_dir_all, write, File};
+use std::fs::{File, create_dir_all, write};
 use std::path::Path;
 use std::process::Child;
 use tracing::info;
