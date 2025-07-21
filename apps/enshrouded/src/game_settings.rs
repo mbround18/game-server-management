@@ -325,16 +325,16 @@ mod tests {
 
         let path = Path::new("./tmp/test_enshrouded_config.json");
         fs::create_dir_all("./tmp").unwrap();
-        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(path);
 
         // Load with env override and save
-        let config = load_or_create_config(&path);
+        let config = load_or_create_config(path);
         assert!(path.exists());
 
         // Ensure env-injected threat_bonus persisted
         assert!((config.game_settings.threat_bonus - 3.14).abs() < f32::EPSILON);
 
-        let raw = fs::read_to_string(&path).expect("failed to read config");
+        let raw = fs::read_to_string(path).expect("failed to read config");
         let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
 
         let threat_bonus = json["gameSettings"]["threatBonus"]

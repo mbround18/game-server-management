@@ -69,7 +69,7 @@ mod tests {
     fn test_password_override() {
         let _lock = TEST_MUTEX.lock().unwrap();
         let group = "Admin";
-        let env_var = format!("SET_GROUP_{}_PASSWORD", group);
+        let env_var = format!("SET_GROUP_{group}_PASSWORD");
         apply_env_var(&env_var, "newpass");
         let mut config = make_config_with_group(group);
         apply_env_overrides(&mut config);
@@ -81,7 +81,7 @@ mod tests {
     fn test_can_kick_ban_override() {
         let _lock = TEST_MUTEX.lock().unwrap();
         let group = "Admin";
-        let env_var = format!("SET_GROUP_{}_CAN_KICK_BAN", group);
+        let env_var = format!("SET_GROUP_{group}_CAN_KICK_BAN");
         apply_env_var(&env_var, "true");
         let mut config = make_config_with_group(group);
         apply_env_overrides(&mut config);
@@ -93,7 +93,7 @@ mod tests {
     fn test_can_access_inventories_override() {
         let _lock = TEST_MUTEX.lock().unwrap();
         let group = "Admin";
-        let env_var = format!("SET_GROUP_{}_CAN_ACCESS_INVENTORIES", group);
+        let env_var = format!("SET_GROUP_{group}_CAN_ACCESS_INVENTORIES");
         apply_env_var(&env_var, "true");
         let mut config = make_config_with_group(group);
         apply_env_overrides(&mut config);
