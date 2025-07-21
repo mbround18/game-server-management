@@ -16,7 +16,7 @@ pub fn fetch_multiple_var(name: &str, default: &str) -> String {
     if value.is_empty() {
         value
     } else {
-        format!("{}:", value)
+        format!("{value}:")
     }
 }
 
@@ -77,7 +77,7 @@ mod tests {
             env::set_var(key, expected);
         }
         let result = fetch_multiple_var(key, "default");
-        assert_eq!(result, format!("{}:", expected));
+        assert_eq!(result, format!("{expected}:"));
         unsafe {
             env::remove_var(key);
         }

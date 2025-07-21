@@ -130,7 +130,7 @@ mod tests {
             install_args: vec![],
             launch_args: vec![dummy_arg()],
             force_windows,
-            working_dir: tempdir().unwrap().into_path(),
+            working_dir: tempdir().unwrap().keep(),
         }
     }
 

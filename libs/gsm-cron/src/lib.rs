@@ -45,7 +45,7 @@ where
     let name_owned = name.to_owned();
     let field_count = schedule.split_whitespace().count();
     let adjusted_schedule = if field_count == 5 {
-        let new_schedule = format!("0 {}", schedule);
+        let new_schedule = format!("0 {schedule}");
         debug!(
             "Adjusted schedule from 5-field to 6-field for job '{}': {} (original: {})",
             name_owned, new_schedule, schedule

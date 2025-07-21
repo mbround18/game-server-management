@@ -67,10 +67,7 @@ where
     if !input.exists() || !input.is_dir() {
         return Err(BackupError::IoError(IoError::new(
             ErrorKind::NotFound,
-            format!(
-                "Input directory {:?} does not exist or is not a directory",
-                input
-            ),
+            format!("Input directory {input:?} does not exist or is not a directory"),
         )));
     }
 
