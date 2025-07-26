@@ -235,11 +235,16 @@ impl Default for ServerConfig {
 /// Loads the configuration from a file or creates a new one with defaults.
 /// Environment variables override both file values and defaults.
 pub fn load_or_create_config(path: &Path) -> ServerConfig {
+    let file_exists = path.exists();
     let mut config = load_config_with_defaults::<ServerConfig>(path);
 
-    apply_env_overrides(&mut config);
+    // Only save if the file didn't exist (new file creation)
+    if !file_exists {
+        save_config(path, &config);
+    }
 
-    save_config(path, &config);
+    // Apply env overrides after saving to preserve original file values
+    apply_env_overrides(&mut config);
 
     config
 }
@@ -311,37 +316,28 @@ mod tests {
     }
 
     #[test]
-    fn test_save_and_load_config() {
-        fs::create_dir_all("./tmp").unwrap();
-        let _lock = TEST_MUTEX.lock().unwrap();
+    fn test_new_config_creation_with_env() {
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         clear_env_vars();
 
         unsafe {
-            env::set_var("PLAYER_HEALTH_FACTOR", "1.5");
-            env::set_var("EXPERIENCE_COMBAT_FACTOR", "300.0");
-            env::set_var("TOMBSTONE_MODE", "Nothing");
             env::set_var("THREAT_BONUS", "5.0");
         }
 
-        let path = Path::new("./tmp/test_enshrouded_config.json");
+        let path = Path::new("./tmp/test_new_config.json");
         fs::create_dir_all("./tmp").unwrap();
         let _ = fs::remove_file(path);
 
-        // Load with env override and save
         let config = load_or_create_config(path);
         assert!(path.exists());
-
-        // Ensure env-injected threat_bonus persisted
         assert!((config.game_settings.threat_bonus - 5.0).abs() < f32::EPSILON);
 
         let raw = fs::read_to_string(path).expect("failed to read config");
         let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
-
-        let threat_bonus = json["gameSettings"]["threatBonus"]
+        let file_threat_bonus = json["gameSettings"]["threatBonus"]
             .as_f64()
-            .expect("missing or invalid threatBonus");
-
-        assert!((threat_bonus - 5.0).abs() < f64::EPSILON);
+            .expect("missing threatBonus");
+        assert!((file_threat_bonus - 5.0).abs() < f64::EPSILON);
 
         unsafe {
             std::env::remove_var("THREAT_BONUS");
@@ -349,17 +345,41 @@ mod tests {
     }
 
     #[test]
+    fn test_load_or_create_config_preserves_existing_file() {
+        use tempfile::TempDir;
+
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        clear_env_vars();
+
+        let tmp_dir = TempDir::new().expect("create temp dir");
+        let config_path = tmp_dir.path().join("existing_config.json");
+
+        let original_config = ServerConfig {
+            name: "CustomServerName".to_string(),
+            game_port: 12345,
+            ..Default::default()
+        };
+        save_config(&config_path, &original_config);
+
+        let loaded_config = load_or_create_config(&config_path);
+        assert_eq!(loaded_config.name, "CustomServerName");
+        assert_eq!(loaded_config.game_port, 12345);
+
+        let raw = fs::read_to_string(&config_path).expect("failed to read config");
+        let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
+        let file_name = json["name"].as_str().expect("missing name");
+        let file_port = json["gamePort"].as_i64().expect("missing gamePort");
+        assert_eq!(file_name, "CustomServerName");
+        assert_eq!(file_port, 12345);
+    }
+
+    #[test]
     fn test_preserve_and_override_with_env() {
-        // This test demonstrates:
-        // 1. Creating a temp config file with a custom value.
-        // 2. Ensuring the custom value is preserved on reload.
-        // 3. Setting an env var and confirming it overrides the config value.
-        // 4. Simulating the loader logic to confirm env var takes precedence.
         use std::fs;
         use std::path::PathBuf;
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap();
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");
