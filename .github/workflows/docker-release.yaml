@@ -84,7 +84,7 @@ jobs:
       - uses: mbround18/gh-reusable/actions/semver@main
         id: semver
         with:
-          prefix: ${{ matrix.app_name }}
+          prefix: ${{ matrix.app_name }}-
 
       - name: Create tag
         id: create-tag
