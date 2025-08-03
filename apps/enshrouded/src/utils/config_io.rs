@@ -7,11 +7,28 @@ where
     T: DeserializeOwned + Default,
 {
     if path.exists() {
+        tracing::debug!("Config file exists at: {:?}", path);
         match fs::read_to_string(path) {
-            Ok(contents) => serde_json::from_str::<T>(&contents).unwrap_or_else(|_| T::default()),
-            Err(_) => T::default(),
+            Ok(contents) => {
+                tracing::debug!("Successfully read config file contents");
+                match serde_json::from_str::<T>(&contents) {
+                    Ok(config) => {
+                        tracing::debug!("Successfully parsed config from file");
+                        config
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse config file, using defaults. Error: {}", e);
+                        T::default()
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to read config file, using defaults. Error: {}", e);
+                T::default()
+            }
         }
     } else {
+        tracing::debug!("Config file does not exist at: {:?}, using defaults", path);
         T::default()
     }
 }

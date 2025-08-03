@@ -56,6 +56,13 @@ async fn main() {
     tracing_subscriber::fmt::init();
     debug!("Tracing subscriber initialized.");
 
+    fn setup_configuration(game_root: &PathBuf) {
+        let config_path = game_root.join("enshrouded_server.json");
+        debug!("Loading or creating config at: {:?}", config_path);
+        game_settings::load_or_create_config(&config_path);
+        debug!("Config load or creation completed.");
+    }
+
     // Set the TZ environment variable to your desired timezone.
     #[cfg(unix)]
     unsafe {
@@ -87,15 +94,14 @@ async fn main() {
                 error!("Installation failed: {}", e);
             } else {
                 debug!("Installation successful.");
-                let config_path = path.join("enshrouded_server.json");
-                debug!("Loading or creating config at: {:?}", config_path);
-                game_settings::load_or_create_config(&config_path);
-                debug!("Config load or creation completed.");
+                setup_configuration(&path);
+                info!("Enshrouded server installed successfully at: {:?}", path);
             }
         }
         Commands::Start => {
             info!("Starting server...");
             let inst = instance.lock().await;
+            setup_configuration(&inst.config.working_dir);
             if let Err(e) = inst.start() {
                 error!("Failed to start server: {}", e);
             } else {

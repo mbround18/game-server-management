@@ -7,7 +7,7 @@ use std::path::Path;
 
 /// Represents game settings in the server configuration.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct GameSettings {
     /// Multiplier for player health (default: 1.0)
     pub player_health_factor: f32,
@@ -148,7 +148,7 @@ impl Default for GameSettings {
 /// - `can_extend_base`: Whether users can extend the base.
 /// - `reserved_slots`: Number of reserved slots for this group.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct UserGroup {
     pub name: String,
     pub password: String,
@@ -184,7 +184,7 @@ impl Default for UserGroup {
 
 /// Represents the full server configuration, including server info, game settings, and user groups.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct ServerConfig {
     pub name: String,
     pub save_directory: String,
@@ -235,17 +235,58 @@ impl Default for ServerConfig {
 /// Loads the configuration from a file or creates a new one with defaults.
 /// Environment variables override both file values and defaults.
 pub fn load_or_create_config(path: &Path) -> ServerConfig {
-    let file_exists = path.exists();
+    tracing::debug!("Loading config from path: {:?}", path);
+
     let mut config = load_config_with_defaults::<ServerConfig>(path);
+    tracing::debug!("Config loaded: {:?}", config.game_settings);
 
-    // Only save if the file didn't exist (new file creation)
-    if !file_exists {
-        save_config(path, &config);
-    }
+    let original_config = config.clone();
 
-    // Apply env overrides after saving to preserve original file values
+    tracing::debug!("Config loaded, applying environment overrides");
     apply_env_overrides(&mut config);
 
+    let config_changed =
+        serde_json::to_string(&config).unwrap() != serde_json::to_string(&original_config).unwrap();
+    tracing::debug!("Config changed after env overrides: {}", config_changed);
+
+    if path.exists() && config_changed {
+        let timestamp = chrono::Local::now().format("%Y-%m-%d-%H.%M.%S");
+        let backup_path = path.with_extension(format!("bak.{timestamp}.json"));
+        tracing::debug!("Creating backup at: {:?}", backup_path);
+        let _ = std::fs::copy(path, &backup_path);
+
+        if let Some(parent) = path.parent() {
+            let prefix = path.file_stem().unwrap_or_default().to_string_lossy();
+            let mut backups: Vec<_> = std::fs::read_dir(parent)
+                .unwrap_or_else(|_| std::fs::read_dir(".").unwrap())
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{prefix}.bak."))
+                        && entry.file_name().to_string_lossy().ends_with(".json")
+                })
+                .collect();
+
+            if backups.len() > 5 {
+                backups.sort_by_key(|entry| {
+                    entry
+                        .metadata()
+                        .and_then(|m| m.modified())
+                        .unwrap_or(std::time::UNIX_EPOCH)
+                });
+                for old_backup in backups.iter().take(backups.len() - 5) {
+                    let _ = std::fs::remove_file(old_backup.path());
+                }
+            }
+        }
+    }
+
+    tracing::debug!("Saving config to: {:?}", path);
+    save_config(path, &config);
+
+    tracing::debug!("Config loading completed");
     config
 }
 
