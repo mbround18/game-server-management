@@ -265,6 +265,7 @@ mod tests {
             "PLAYER_HEALTH_FACTOR",
             "PLAYER_MANA_FACTOR",
             "PLAYER_STAMINA_FACTOR",
+            "PLAYER_BODY_HEAT_FACTOR",
             "EXPERIENCE_COMBAT_FACTOR",
             "TOMBSTONE_MODE",
             "THREAT_BONUS",
@@ -305,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_env_override_string() {
-        let _lock = TEST_MUTEX.lock().unwrap();
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         clear_env_vars();
         unsafe {
             env::set_var("TOMBSTONE_MODE", "Nothing");
@@ -345,7 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_or_create_config_preserves_existing_file() {
+    fn test_load_or_create_config_saves_only_on_new_file() {
         use tempfile::TempDir;
 
         let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
@@ -355,22 +356,22 @@ mod tests {
         let config_path = tmp_dir.path().join("existing_config.json");
 
         let original_config = ServerConfig {
-            name: "CustomServerName".to_string(),
-            game_port: 12345,
+            name: "CustomName".to_string(),
+            game_port: 54321,
             ..Default::default()
         };
         save_config(&config_path, &original_config);
 
         let loaded_config = load_or_create_config(&config_path);
-        assert_eq!(loaded_config.name, "CustomServerName");
-        assert_eq!(loaded_config.game_port, 12345);
+        assert_eq!(loaded_config.name, "CustomName");
+        assert_eq!(loaded_config.game_port, 54321);
 
         let raw = fs::read_to_string(&config_path).expect("failed to read config");
         let json: serde_json::Value = serde_json::from_str(&raw).expect("invalid JSON");
         let file_name = json["name"].as_str().expect("missing name");
         let file_port = json["gamePort"].as_i64().expect("missing gamePort");
-        assert_eq!(file_name, "CustomServerName");
-        assert_eq!(file_port, 12345);
+        assert_eq!(file_name, "CustomName");
+        assert_eq!(file_port, 54321);
     }
 
     #[test]
