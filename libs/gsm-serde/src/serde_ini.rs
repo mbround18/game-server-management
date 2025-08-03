@@ -29,7 +29,7 @@ pub trait IniHeader {
 fn format_number(n: &serde_json::Number) -> String {
     if let Some(f) = n.as_f64() {
         // Format to 5 decimals.
-        let s = format!("{:.5}", f);
+        let s = format!("{f:.5}");
         // Trim trailing zeros and possible trailing dot.
         let s = s.trim_end_matches('0').trim_end_matches('.');
         if s.is_empty() {
@@ -45,10 +45,10 @@ fn format_number(n: &serde_json::Number) -> String {
 /// Helper: Format a JSON value appropriately.
 fn format_json_value(value: &serde_json::Value) -> String {
     match value {
-        serde_json::Value::String(s) => format!("\"{}\"", s),
-        serde_json::Value::Bool(b) => format!("{}", b),
+        serde_json::Value::String(s) => format!("\"{s}\""),
+        serde_json::Value::Bool(b) => format!("{b}"),
         serde_json::Value::Number(n) => format_number(n),
-        _ => format!("{}", value),
+        _ => format!("{value}"),
     }
 }
 
@@ -64,9 +64,9 @@ fn serialize_value(value: &serde_json::Value, indent: usize) -> String {
                 match val {
                     serde_json::Value::Object(_) => {
                         // Start a new nested block.
-                        output.push_str(&format!("{}{}=(\n", indent_str, key));
+                        output.push_str(&format!("{indent_str}{key}=(\n"));
                         output.push_str(&serialize_value(val, indent + 1));
-                        output.push_str(&format!("{})\n", indent_str));
+                        output.push_str(&format!("{indent_str})\n"));
                     }
                     _ => {
                         output.push_str(&format!(
@@ -169,7 +169,7 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
 
     // Write the header section.
     let section = T::ini_header();
-    writeln!(&mut output, "[{}]", section).unwrap();
+    writeln!(&mut output, "[{section}]").unwrap();
 
     // Convert the value into a serde_json::Value.
     let serialized = serde_json::to_value(value)?;
@@ -181,7 +181,7 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
             match val {
                 serde_json::Value::Object(_) => {
                     // For nested objects, use the recursive helper with indent level 1.
-                    writeln!(&mut output, "{}=(", key).unwrap();
+                    writeln!(&mut output, "{key}=(").unwrap();
                     output.push_str(&serialize_value(&val, 1));
                     writeln!(&mut output, ")").unwrap();
                 }

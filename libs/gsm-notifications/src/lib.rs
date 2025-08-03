@@ -38,11 +38,11 @@ pub enum NotificationError {
 impl fmt::Display for NotificationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NotificationError::HttpError(err) => write!(f, "HTTP error: {}", err),
-            NotificationError::InvalidWebhookUrl(url) => write!(f, "Invalid webhook URL: {}", url),
-            NotificationError::SerializationError(err) => write!(f, "Serialization error: {}", err),
+            NotificationError::HttpError(err) => write!(f, "HTTP error: {err}"),
+            NotificationError::InvalidWebhookUrl(url) => write!(f, "Invalid webhook URL: {url}"),
+            NotificationError::SerializationError(err) => write!(f, "Serialization error: {err}"),
             NotificationError::DispatcherNotFound(url) => {
-                write!(f, "No dispatcher for webhook URL: {}", url)
+                write!(f, "No dispatcher for webhook URL: {url}")
             }
         }
     }

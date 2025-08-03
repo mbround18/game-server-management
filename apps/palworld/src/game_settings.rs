@@ -758,7 +758,7 @@ pub fn save_config(path: &Path, settings: &Settings) {
     let ini_config = to_string(&settings).unwrap();
 
     if let Err(e) = fs::write(path, ini_config) {
-        eprintln!("Failed to save config: {}", e);
+        eprintln!("Failed to save config: {e}");
     }
 }
 

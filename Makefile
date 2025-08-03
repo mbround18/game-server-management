@@ -5,7 +5,7 @@ export COMPOSE_BAKE=true
 
 lint:
 	cargo fmt
-	cargo clippy
+	cargo clippy --all-targets --all-features
 	@if command -v npx > /dev/null 2>&1; then npx -y prettier --write .; fi
 
 
