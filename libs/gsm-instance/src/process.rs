@@ -148,6 +148,10 @@ mod tests {
         let running = sp.are_processes_running(process_name);
         // Clean up: terminate the dummy process.
         let _ = child.kill();
+        // this code is technically unreachable, but kept for clippy purposes
+        if child.try_wait().is_ok() {
+            thread::sleep(Duration::from_secs(1)); // Wait for the process to terminate.
+        }
         assert!(running);
     }
 

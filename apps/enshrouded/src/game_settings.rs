@@ -82,58 +82,100 @@ pub struct GameSettings {
 impl Default for GameSettings {
     fn default() -> Self {
         Self {
-            player_health_factor: env_parse!("PLAYER_HEALTH_FACTOR", 1.0, f32),
-            player_mana_factor: env_parse!("PLAYER_MANA_FACTOR", 1.0, f32),
-            player_stamina_factor: env_parse!("PLAYER_STAMINA_FACTOR", 1.0, f32),
-            player_body_heat_factor: env_parse!("PLAYER_BODY_HEAT_FACTOR", 1.0, f32),
-            enable_durability: env_parse!("ENABLE_DURABILITY", true, bool),
-            enable_starving_debuff: env_parse!("ENABLE_STARVING_DEBUFF", false, bool),
-            food_buff_duration_factor: env_parse!("FOOD_BUFF_DURATION_FACTOR", 1.0, f32),
-            from_hunger_to_starving: env_parse!("FROM_HUNGER_TO_STARVING", 600_000_000_000, u64),
-            shroud_time_factor: env_parse!("SHROUD_TIME_FACTOR", 1.0, f32),
-            tombstone_mode: std::env::var("TOMBSTONE_MODE")
-                .unwrap_or_else(|_| "AddBackpackMaterials".to_string()),
-            enable_glider_turbulences: env_parse!("ENABLE_GLIDER_TURBULENCES", true, bool),
-            weather_frequency: std::env::var("WEATHER_FREQUENCY")
-                .unwrap_or_else(|_| "Normal".to_string()),
-            mining_damage_factor: env_parse!("MINING_DAMAGE_FACTOR", 1.0, f32),
-            plant_growth_speed_factor: env_parse!("PLANT_GROWTH_SPEED_FACTOR", 1.0, f32),
-            resource_drop_stack_amount_factor: env_parse!(
-                "RESOURCE_DROP_STACK_AMOUNT_FACTOR",
-                1.0,
-                f32
-            ),
-            factory_production_speed_factor: env_parse!(
-                "FACTORY_PRODUCTION_SPEED_FACTOR",
-                1.0,
-                f32
-            ),
-            perk_upgrade_recycling_factor: env_parse!("PERK_UPGRADE_RECYCLING_FACTOR", 0.5, f32),
-            perk_cost_factor: env_parse!("PERK_COST_FACTOR", 1.0, f32),
-            experience_combat_factor: env_parse!("EXPERIENCE_COMBAT_FACTOR", 1.0, f32),
-            experience_mining_factor: env_parse!("EXPERIENCE_MINING_FACTOR", 1.0, f32),
-            experience_exploration_quests_factor: env_parse!(
-                "EXPERIENCE_EXPLORATION_QUESTS_FACTOR",
-                1.0,
-                f32
-            ),
-            random_spawner_amount: std::env::var("RANDOM_SPAWNER_AMOUNT")
-                .unwrap_or_else(|_| "Normal".to_string()),
-            aggro_pool_amount: std::env::var("AGGRO_POOL_AMOUNT")
-                .unwrap_or_else(|_| "Normal".to_string()),
-            enemy_damage_factor: env_parse!("ENEMY_DAMAGE_FACTOR", 1.0, f32),
-            enemy_health_factor: env_parse!("ENEMY_HEALTH_FACTOR", 1.0, f32),
-            enemy_stamina_factor: env_parse!("ENEMY_STAMINA_FACTOR", 1.0, f32),
-            enemy_perception_range_factor: env_parse!("ENEMY_PERCEPTION_RANGE_FACTOR", 1.0, f32),
-            boss_damage_factor: env_parse!("BOSS_DAMAGE_FACTOR", 1.0, f32),
-            boss_health_factor: env_parse!("BOSS_HEALTH_FACTOR", 1.0, f32),
-            threat_bonus: env_parse!("THREAT_BONUS", 1.0, f32),
-            pacify_all_enemies: env_parse!("PACIFY_ALL_ENEMIES", false, bool),
-            taming_startle_repercussion: std::env::var("TAMING_STARTLE_REPERCUSSION")
-                .unwrap_or_else(|_| "LoseSomeProgress".to_string()),
-            day_time_duration: env_parse!("DAY_TIME_DURATION", 1_800_000_000_000, u64),
-            night_time_duration: env_parse!("NIGHT_TIME_DURATION", 720_000_000_000, u64),
+            player_health_factor: 1.0,
+            player_mana_factor: 1.0,
+            player_stamina_factor: 1.0,
+            player_body_heat_factor: 1.0,
+            enable_durability: true,
+            enable_starving_debuff: false,
+            food_buff_duration_factor: 1.0,
+            from_hunger_to_starving: 600_000_000_000,
+            shroud_time_factor: 1.0,
+            tombstone_mode: "AddBackpackMaterials".to_string(),
+            enable_glider_turbulences: true,
+            weather_frequency: "Normal".to_string(),
+            mining_damage_factor: 1.0,
+            plant_growth_speed_factor: 1.0,
+            resource_drop_stack_amount_factor: 1.0,
+            factory_production_speed_factor: 1.0,
+            perk_upgrade_recycling_factor: 0.5,
+            perk_cost_factor: 1.0,
+            experience_combat_factor: 1.0,
+            experience_mining_factor: 1.0,
+            experience_exploration_quests_factor: 1.0,
+            random_spawner_amount: "Normal".to_string(),
+            aggro_pool_amount: "Normal".to_string(),
+            enemy_damage_factor: 1.0,
+            enemy_health_factor: 1.0,
+            enemy_stamina_factor: 1.0,
+            enemy_perception_range_factor: 1.0,
+            boss_damage_factor: 1.0,
+            boss_health_factor: 1.0,
+            threat_bonus: 1.0,
+            pacify_all_enemies: false,
+            taming_startle_repercussion: "LoseSomeProgress".to_string(),
+            day_time_duration: 1_800_000_000_000,
+            night_time_duration: 720_000_000_000,
         }
+    }
+}
+
+macro_rules! env_field_mapping {
+    ($($field:ident => $env_var:literal),*) => {
+        pub fn from_env() -> Self {
+            Self {
+                $(
+                    $field: env_parse!($env_var, Self::default().$field, _),
+                )*
+            }
+        }
+
+        pub fn merge_env(&mut self, env_config: &GameSettings) {
+            $(
+                if std::env::var($env_var).is_ok() {
+                    self.$field = env_config.$field.clone();
+                }
+            )*
+        }
+    };
+}
+
+impl GameSettings {
+    env_field_mapping! {
+        player_health_factor => "PLAYER_HEALTH_FACTOR",
+        player_mana_factor => "PLAYER_MANA_FACTOR",
+        player_stamina_factor => "PLAYER_STAMINA_FACTOR",
+        player_body_heat_factor => "PLAYER_BODY_HEAT_FACTOR",
+        enable_durability => "ENABLE_DURABILITY",
+        enable_starving_debuff => "ENABLE_STARVING_DEBUFF",
+        food_buff_duration_factor => "FOOD_BUFF_DURATION_FACTOR",
+        from_hunger_to_starving => "FROM_HUNGER_TO_STARVING",
+        shroud_time_factor => "SHROUD_TIME_FACTOR",
+        tombstone_mode => "TOMBSTONE_MODE",
+        enable_glider_turbulences => "ENABLE_GLIDER_TURBULENCES",
+        weather_frequency => "WEATHER_FREQUENCY",
+        mining_damage_factor => "MINING_DAMAGE_FACTOR",
+        plant_growth_speed_factor => "PLANT_GROWTH_SPEED_FACTOR",
+        resource_drop_stack_amount_factor => "RESOURCE_DROP_STACK_AMOUNT_FACTOR",
+        factory_production_speed_factor => "FACTORY_PRODUCTION_SPEED_FACTOR",
+        perk_upgrade_recycling_factor => "PERK_UPGRADE_RECYCLING_FACTOR",
+        perk_cost_factor => "PERK_COST_FACTOR",
+        experience_combat_factor => "EXPERIENCE_COMBAT_FACTOR",
+        experience_mining_factor => "EXPERIENCE_MINING_FACTOR",
+        experience_exploration_quests_factor => "EXPERIENCE_EXPLORATION_QUESTS_FACTOR",
+        random_spawner_amount => "RANDOM_SPAWNER_AMOUNT",
+        aggro_pool_amount => "AGGRO_POOL_AMOUNT",
+        enemy_damage_factor => "ENEMY_DAMAGE_FACTOR",
+        enemy_health_factor => "ENEMY_HEALTH_FACTOR",
+        enemy_stamina_factor => "ENEMY_STAMINA_FACTOR",
+        enemy_perception_range_factor => "ENEMY_PERCEPTION_RANGE_FACTOR",
+        boss_damage_factor => "BOSS_DAMAGE_FACTOR",
+        boss_health_factor => "BOSS_HEALTH_FACTOR",
+        threat_bonus => "THREAT_BONUS",
+        pacify_all_enemies => "PACIFY_ALL_ENEMIES",
+        taming_startle_repercussion => "TAMING_STARTLE_REPERCUSSION",
+        day_time_duration => "DAY_TIME_DURATION",
+        night_time_duration => "NIGHT_TIME_DURATION"
     }
 }
 
