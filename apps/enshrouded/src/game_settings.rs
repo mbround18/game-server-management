@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_default_settings() {
-        let _lock = TEST_MUTEX.lock().unwrap();
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         clear_env_vars();
 
         let settings = GameSettings::default();
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_env_override_f32() {
-        let _lock = TEST_MUTEX.lock().unwrap();
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         clear_env_vars();
 
         unsafe {
@@ -382,7 +382,7 @@ mod tests {
             env::set_var("EXPERIENCE_COMBAT_FACTOR", "3.0");
         }
 
-        let settings = GameSettings::default();
+        let settings = GameSettings::from_env();
         assert_eq!(settings.player_health_factor, 1.5);
         assert_eq!(settings.experience_combat_factor, 3.0);
     }
@@ -395,7 +395,7 @@ mod tests {
             env::set_var("TOMBSTONE_MODE", "Nothing");
         }
 
-        let settings = GameSettings::default();
+        let settings = GameSettings::from_env();
         assert_eq!(settings.tombstone_mode, "Nothing");
     }
 
@@ -483,7 +483,7 @@ mod tests {
         unsafe {
             std::env::set_var("PLAYER_HEALTH_FACTOR", "99.0");
         }
-        let loaded2 = GameSettings::default();
+        let loaded2 = GameSettings::from_env();
         assert_eq!(loaded2.player_health_factor, 99.0);
 
         let mut config2: GameSettings = load_config_with_defaults(&config_path);

@@ -1,8 +1,7 @@
 use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
+use crate::process::send_interrupt_to_pid;
 use crate::{install, shutdown, startup, update};
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Child; // Using synchronous std process Child
@@ -22,15 +21,14 @@ impl Instance {
         Self { config }
     }
 
-    pub fn pid(&self) -> Result<Pid, InstanceError> {
+    pub fn pid(&self) -> Result<u32, InstanceError> {
         let pid_file = self.config.pid_file();
         if pid_file.exists() {
             // Read the PID from the file
             return fs::read_to_string(&pid_file)
                 .map_err(InstanceError::IoError)?
                 .trim()
-                .parse::<i32>()
-                .map(Pid::from_raw)
+                .parse::<u32>()
                 .map_err(InstanceError::ParseError);
         }
         Err(InstanceError::Unknown("Failed to find pid".to_string()))
@@ -93,7 +91,7 @@ impl Instance {
     pub fn stop(&self) -> Result<(), InstanceError> {
         match self.pid() {
             Ok(pid) => {
-                signal::kill(pid, Signal::SIGINT).map_err(InstanceError::SignalError)?;
+                send_interrupt_to_pid(pid);
                 fs::remove_file(self.config.pid_file()).map_err(InstanceError::IoError)?;
             }
             Err(_) => {

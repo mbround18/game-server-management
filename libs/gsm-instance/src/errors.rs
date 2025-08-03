@@ -1,4 +1,3 @@
-use nix::Error as NixError;
 use std::io;
 use std::num::ParseIntError;
 use thiserror::Error;
@@ -29,10 +28,6 @@ pub enum InstanceError {
     /// An error occurred while parsing an integer.
     #[error("Parse error: {0}")]
     ParseError(#[from] ParseIntError),
-
-    /// An error occurred while sending a signal to a process.
-    #[error("Signal error: {0}")]
-    SignalError(#[from] NixError),
 
     /// An unknown error occurred.
     #[error("Unknown error: {0}")]
