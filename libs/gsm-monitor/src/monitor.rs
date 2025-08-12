@@ -81,19 +81,11 @@ impl Monitor {
                                 trace!("Successfully reopened log file");
                                 reader = BufReader::new(new_file);
                                 if let Err(e) = reader.seek(SeekFrom::Start(0)) {
-                                    error!(
-                                        "Failed to seek to start of {}: {}",
-                                        path.display(),
-                                        e
-                                    );
+                                    error!("Failed to seek to start of {}: {}", path.display(), e);
                                 }
                             }
                             Err(e) => {
-                                error!(
-                                    "Failed to re-open log file {}: {}",
-                                    path.display(),
-                                    e
-                                );
+                                error!("Failed to re-open log file {}: {}", path.display(), e);
                             }
                         }
                     }
