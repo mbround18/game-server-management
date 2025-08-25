@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LaunchMode {
+    Native,
+    Wine,
+    Proton,
+}
+
 /// Configuration for a game server instance managed by gsm-instance.
 ///
 /// This struct holds all parameters needed to configure the game server:
@@ -27,6 +34,7 @@ use std::path::PathBuf;
 ///     launch_args: vec!["-nographics".to_string(), "-batchmode".to_string()],
 ///     force_windows: true,
 ///     working_dir: PathBuf::from("/home/steam/myserver"),
+///     launch_mode: gsm_instance::config::LaunchMode::Native,
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +53,8 @@ pub struct InstanceConfig {
     pub force_windows: bool,
     /// The working directory for the server.
     pub working_dir: PathBuf,
+
+    pub launch_mode: LaunchMode,
 }
 
 impl Default for InstanceConfig {
@@ -57,6 +67,7 @@ impl Default for InstanceConfig {
             launch_args: Vec::new(),
             force_windows: false,
             working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            launch_mode: LaunchMode::Native,
         }
     }
 }

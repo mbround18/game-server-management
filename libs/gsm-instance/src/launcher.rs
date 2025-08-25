@@ -1,9 +1,46 @@
 use crate::config::InstanceConfig;
+use crate::config::LaunchMode;
 use crate::errors::InstanceError;
+use std::fs;
 use std::fs::File;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tracing::debug;
-use which::which;
+use which::which; // Make sure LaunchMode is accessible
+
+// Define a common function to find the Steam installation path
+fn find_steam_root() -> Result<PathBuf, String> {
+    let path = PathBuf::from("/home/steam/.steam/steam");
+    if path.exists() {
+        Ok(path)
+    } else {
+        Err("Steam installation not found.".to_string())
+    }
+}
+
+// Function to find the Proton executable
+fn find_proton() -> Result<PathBuf, String> {
+    let steam_root = find_steam_root()?;
+    let common_dir = steam_root.join("steamapps/common");
+
+    // Find the latest version of Proton
+    let proton_path = fs::read_dir(common_dir)
+        .map_err(|e| format!("Failed to read common directory: {}", e))?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            let file_name = path.file_name()?.to_str()?;
+            if file_name.starts_with("Proton") {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .max() // max will get the latest version by lexicographical sort
+        .ok_or_else(|| "No Proton installation found.".to_string())?;
+
+    Ok(proton_path.join("proton"))
+}
 
 fn fine_wine() -> Result<String, String> {
     // Attempt to find 'wine64' first
@@ -25,51 +62,25 @@ fn fine_wine() -> Result<String, String> {
 }
 
 /// Constructs the server process command according to the given configuration.
-///
-/// # Behavior
-///
-/// - If `force_windows` is true, the command is prefixed with `"wine64"` to run a Windows executable via Wine.
-/// - All additional launch arguments (from `launch_args`) are appended to the command.
-/// - The working directory is set to `config.working_dir`.
-///
-/// Instead of spawning the process immediately, this function returns the constructed `Command` so that
-/// the caller can further configure it (for example, piping stdout/stderr) before spawning it.
-///
-/// # Errors
-///
-/// Returns an `InstanceError::CommandExecutionError` if building the command fails.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use gsm_instance::config::InstanceConfig;
-/// use gsm_instance::launcher::launch_server;
-/// use std::path::PathBuf;
-///
-/// let config = InstanceConfig {
-///     app_id: 123456,
-///     name: "My Server".to_string(),
-///     command: "server_executable".to_string(),
-///     install_args: vec![],
-///     launch_args: vec!["-nographics".to_string(), "-batchmode".to_string()],
-///     force_windows: false,
-///     working_dir: PathBuf::from("/home/steam/myserver"),
-/// };
-///
-/// let mut command = launch_server(&config).expect("Failed to build command");
-/// // Configure stdout/stderr and spawn the command:
-/// let child = command
-///     .spawn()
-///     .expect("Failed to spawn server process");
-/// ```
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
-    let mut command = if config.force_windows {
-        // When force_windows is true, prefix with "wine64"
-        let mut cmd = Command::new(fine_wine().map_err(InstanceError::Unknown)?);
-        cmd.arg(&config.command);
-        cmd
-    } else {
-        Command::new(&config.command)
+    let mut command = match &config.launch_mode {
+        LaunchMode::Wine => {
+            let mut cmd = Command::new(fine_wine().map_err(InstanceError::Unknown)?);
+            cmd.arg(&config.command);
+            cmd
+        }
+        LaunchMode::Proton => {
+            let proton_path = find_proton().map_err(InstanceError::Unknown)?;
+            let mut cmd = Command::new(proton_path);
+            cmd.env(
+                "STEAM_COMPAT_DATA_PATH",
+                &config.working_dir.join("compatdata"),
+            ); // Use a separate compatdata dir
+            cmd.arg("run"); // Tell Proton to run an executable
+            cmd.arg(&config.command);
+            cmd
+        }
+        LaunchMode::Native => Command::new(&config.command),
     };
 
     // Append additional launch arguments.
@@ -96,6 +107,7 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
 mod tests {
     use super::*;
     use crate::config::InstanceConfig;
+    use crate::config::LaunchMode; // Also need to use LaunchMode in tests
     use crate::errors::InstanceError;
     use std::process::Child;
     use tempfile::tempdir;
@@ -122,31 +134,50 @@ mod tests {
     }
 
     /// Creates a basic InstanceConfig for testing the launcher.
-    fn test_config(force_windows: bool) -> InstanceConfig {
+    fn test_config(launch_mode: LaunchMode) -> InstanceConfig {
         InstanceConfig {
             app_id: 123456,
             name: "TestServer".to_string(),
             command: dummy_command(),
             install_args: vec![],
             launch_args: vec![dummy_arg()],
-            force_windows,
+            launch_mode,
             working_dir: tempdir().unwrap().keep(),
+            force_windows: false,
+            // Ensure you have a stdout() method for testing
         }
     }
 
     #[test]
-    fn test_launch_server_with_force_windows() {
+    fn test_launch_server_with_wine() {
         // For testing force_windows, check if "wine64" is available.
         if which::which("wine64").is_err() {
-            eprintln!("wine64 not found, skipping test_launch_server_with_force_windows");
+            eprintln!("wine64 not found, skipping test_launch_server_with_wine");
             return;
         }
-        let config = test_config(true);
+        let config = test_config(LaunchMode::Wine);
         let command_result: Result<Command, InstanceError> = launch_server(&config);
         assert!(command_result.is_ok());
         let mut command = command_result.unwrap();
         let mut child: Child = command.spawn().expect("Failed to spawn child process");
         let status = child.wait().expect("Failed to wait on child process");
         assert!(status.success());
+    }
+
+    #[test]
+    fn test_launch_server_with_proton() {
+        // Check if proton can be found
+        if find_proton().is_err() {
+            eprintln!("Proton not found, skipping test_launch_server_with_proton");
+            return;
+        }
+
+        let config = test_config(LaunchMode::Proton);
+        let command_result: Result<Command, InstanceError> = launch_server(&config);
+        assert!(command_result.is_ok());
+
+        // This test would require a more complex setup to actually run a real proton command.
+        // The assertion for `command_result.is_ok()` is still valid to check if the
+        // Command was successfully constructed.
     }
 }
