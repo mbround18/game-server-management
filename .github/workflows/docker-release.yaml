@@ -21,7 +21,7 @@ jobs:
       app_matrix: ${{ steps.set-app-matrix.outputs.app_matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install jq
         uses: mbround18/gh-reusable/actions/install-cli@main
@@ -76,7 +76,7 @@ jobs:
         include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: "${{ secrets.GH_TOKEN }}"
           fetch-depth: 0
