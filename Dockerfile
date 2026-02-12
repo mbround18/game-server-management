@@ -39,7 +39,7 @@ COPY --from=cacher /usr/local/cargo/registry /usr/local/cargo/registry
 RUN cargo build --release
 
 # Stage 5: Runtime
-FROM debian:12-slim AS gh-runtime
+FROM debian:13-slim AS gh-runtime
 
 RUN apt-get update && apt-get install -y libssl-dev curl jq unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -51,7 +51,7 @@ COPY --chmod=0755 ./dist .
 CMD ["bash"]
 
 
-FROM debian:12-slim AS runtime
+FROM debian:13-slim AS runtime
 
 RUN apt-get update && apt-get install -y libssl-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
