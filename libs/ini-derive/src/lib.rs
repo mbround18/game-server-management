@@ -30,10 +30,10 @@ pub fn ini_serialize(input: TokenStream) -> TokenStream {
     // Look for #[INIHeader(name = "...")]
     let mut header_value = None;
     for attr in input.attrs.iter() {
-        if attr.path().is_ident("INIHeader") {
-            if let Ok(args) = attr.parse_args::<IniHeaderArgs>() {
-                header_value = Some(args.name.value());
-            }
+        if attr.path().is_ident("INIHeader")
+            && let Ok(args) = attr.parse_args::<IniHeaderArgs>()
+        {
+            header_value = Some(args.name.value());
         }
     }
 
