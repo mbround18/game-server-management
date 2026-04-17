@@ -1,5 +1,5 @@
 # Stage 1: Base Image
-FROM rust:1.94 AS base
+FROM rust:1.95 AS base
 
 RUN apt-get update && apt-get install -y cmake \
     && cargo install cargo-chef --locked \
