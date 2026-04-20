@@ -1,5 +1,5 @@
 # Define versions globally
-ARG RUST_VERSION=1.94
+ARG RUST_VERSION=1.95
 ARG DEBIAN_VERSION=13-slim
 
 # Stage 1: Base Image with development tools
@@ -8,12 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     libssl-dev \
     pkg-config \
+    jq \
     && cargo install cargo-chef --locked \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for the build process
-RUN useradd -m rustuser
+RUN useradd -m rustuser \
+    && mkdir -p /usr/local/cargo \
+    && chown -R rustuser:rustuser /usr/local/cargo
 USER rustuser
 WORKDIR /home/rustuser/app
 
