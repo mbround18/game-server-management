@@ -1,63 +1,104 @@
-# Stage 1: Base Image
-FROM rust:1.89 AS base
+# Define versions globally
+ARG RUST_VERSION=1.94
+ARG DEBIAN_VERSION=13-slim
 
-RUN apt-get update && apt-get install -y cmake \
+# Stage 1: Base Image with development tools
+FROM rust:${RUST_VERSION} AS base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    libssl-dev \
+    pkg-config \
     && cargo install cargo-chef --locked \
-    && apt-get clean  \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m rustuser \
-    && mkdir -p /usr/local/cargo \
-    && chown -R rustuser:rustuser /usr/local/cargo
-
+# Create a non-root user for the build process
+RUN useradd -m rustuser
 USER rustuser
 WORKDIR /home/rustuser/app
 
-# Stage 2: Planner
+# Stage 2: Planner (Creates the dependency recipe)
 FROM base AS planner
-# Copy the entire repository so that all workspace members (e.g., libs/*) are present.
 COPY --chown=rustuser:rustuser . .
-
 RUN cargo chef prepare --recipe-path recipe.json
 
-# Stage 3: Cacher
+# Stage 3: Cacher (Compiles only dependencies)
 FROM base AS cacher
-WORKDIR /home/rustuser/app
-COPY --chown=rustuser:rustuser --from=planner /home/rustuser/app/recipe.json .
+COPY --from=planner /home/rustuser/app/recipe.json recipe.json
+# Use a cache mount for the cargo registry to speed up subsequent builds
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/rustuser/app/target \
+    cargo chef cook --release --recipe-path recipe.json
 
-RUN cargo chef cook --release --recipe-path recipe.json
-
-# Stage 4: Builder
+# Stage 4: Builder (Compiles the actual application)
 FROM base AS builder
-WORKDIR /home/rustuser/app
-
+COPY --from=planner /home/rustuser/app/recipe.json recipe.json
 COPY --chown=rustuser:rustuser . .
-
+# Copy pre-compiled dependencies
 COPY --from=cacher /home/rustuser/app/target target
 COPY --from=cacher /usr/local/cargo/registry /usr/local/cargo/registry
 
-RUN cargo build --release
+# Build and strip the binary to reduce size
+RUN cargo build --release && \
+    strip target/release/$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].targets[0].name')
 
-# Stage 5: Runtime
-FROM debian:12-slim AS gh-runtime
-
-RUN apt-get update && apt-get install -y libssl-dev curl jq unzip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Stage 5: Core Runtime Base
+FROM debian:${DEBIAN_VERSION} AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY --chmod=0755 ./dist .
+# Stage 6: SteamCMD Base
+FROM runtime AS steamcmd
+ENV DEBIAN_FRONTEND=noninteractive
+ENV STEAMCMD_DIR="/home/steam/steamcmd"
 
-CMD ["bash"]
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl tar lib32gcc-s1 lib32stdc++6 procps && \
+    rm -rf /var/lib/apt/lists/*
 
+RUN useradd -m steam
+USER steam
+WORKDIR /home/steam
 
-FROM debian:12-slim AS runtime
+RUN mkdir -p ${STEAMCMD_DIR} && cd ${STEAMCMD_DIR} && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    ./steamcmd.sh +quit
 
-RUN apt-get update && apt-get install -y libssl-dev && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV PATH="${PATH}:${STEAMCMD_DIR}"
 
-WORKDIR /app
+# Stage 7: SteamCMD + Proton (For Windows-only game servers)
+FROM steamcmd AS steamcmd-proton
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wine \
+    wine32 \
+    wine64 \
+    xvfb \
+    libsdl2-2.0-0:i386 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /home/rustuser/app/target/release/ .
+USER steam
+ENV PROTON_VERSION="GE-Proton10-34"
+ENV PROTON_DIR="/home/steam/proton"
+ENV STEAM_COMPAT_DATA_PATH="/home/steam/compatdata"
 
+# Example download for GE-Proton (requires a direct URL to a release tarball)
+RUN mkdir -p ${PROTON_DIR} ${STEAM_COMPAT_DATA_PATH} && \
+    curl -sqL "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${PROTON_VERSION}/${PROTON_VERSION}.tar.gz" | tar -C ${PROTON_DIR} -zxvf -
+
+ENV PATH="${PATH}:${PROTON_DIR}/${PROTON_VERSION}"
+
+# Final Production Stage: Application + SteamCMD/Proton
+FROM steamcmd-proton AS final
+USER root
+# Copy the compiled Rust binary from the builder
+# Replace 'app-name' with your actual binary name if it differs
+COPY --from=builder /home/rustuser/app/target/release/* /usr/local/bin/
+USER steam
 CMD ["bash"]

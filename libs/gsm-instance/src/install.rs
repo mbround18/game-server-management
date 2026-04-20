@@ -101,3 +101,102 @@ pub fn install<P: AsRef<Path>>(
     // Execute the command using our helper (assumed to be defined in executable.rs)
     execute_mut(command)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{add_additional_args, install};
+    use crate::test_support::env_lock;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    #[cfg(unix)]
+    fn write_executable_script(path: &Path, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+
+        fs::write(path, body).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[test]
+    fn add_additional_args_ignores_missing_or_blank_values() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut args = Vec::new();
+
+        unsafe {
+            std::env::remove_var("ADDITIONAL_STEAMCMD_ARGS");
+        }
+        add_additional_args(&mut args);
+        assert!(args.is_empty());
+
+        unsafe {
+            std::env::set_var("ADDITIONAL_STEAMCMD_ARGS", "   ");
+        }
+        add_additional_args(&mut args);
+        assert!(args.is_empty());
+
+        unsafe {
+            std::env::remove_var("ADDITIONAL_STEAMCMD_ARGS");
+        }
+    }
+
+    #[test]
+    fn add_additional_args_trims_wrapping_quotes() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut args = Vec::new();
+
+        unsafe {
+            std::env::set_var("ADDITIONAL_STEAMCMD_ARGS", "\"+app_info_update 1\"");
+        }
+
+        add_additional_args(&mut args);
+        assert_eq!(args, vec![String::from("+app_info_update 1")]);
+
+        unsafe {
+            std::env::remove_var("ADDITIONAL_STEAMCMD_ARGS");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_passes_expected_args_to_steamcmd() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let temp_dir = tempdir().unwrap();
+        let args_path = temp_dir.path().join("args.txt");
+        let script_path = temp_dir.path().join("fake-steamcmd.sh");
+        let script = format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\nexit 0\n",
+            args_path.display()
+        );
+        write_executable_script(&script_path, &script);
+
+        unsafe {
+            std::env::set_var("STEAMCMD_PATH", &script_path);
+            std::env::set_var("ADDITIONAL_STEAMCMD_ARGS", "\"+app_info_update 1\"");
+        }
+
+        let extra_args = vec![String::from("+download_depot 123 456")];
+        let status = install(2278520, temp_dir.path(), true, &extra_args).unwrap();
+        assert!(status.success());
+
+        let recorded_args = fs::read_to_string(&args_path).unwrap();
+        let lines: Vec<&str> = recorded_args.lines().collect();
+        assert_eq!(lines[0], "+@sSteamCmdForcePlatformType windows");
+        assert_eq!(
+            lines[1],
+            format!("+force_install_dir {}", temp_dir.path().display())
+        );
+        assert_eq!(lines[2], "+login anonymous");
+        assert_eq!(lines[3], "+app_update 2278520 validate");
+        assert_eq!(lines[4], "+download_depot 123 456");
+        assert_eq!(lines[5], "+app_info_update 1");
+        assert_eq!(lines[6], "+quit");
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
+            std::env::remove_var("ADDITIONAL_STEAMCMD_ARGS");
+        }
+    }
+}

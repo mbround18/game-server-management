@@ -1,0 +1,19 @@
+services:
+  runtime:
+    image: mbround18/gsm-reference:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+  steamcmd:
+    image: mbround18/gsm-steamcmd:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: steamcmd
+  steamcmd-proton:
+    image: mbround18/gsm-steamcmd-proton:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: steamcmd-proton

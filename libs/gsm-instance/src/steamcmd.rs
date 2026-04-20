@@ -70,3 +70,38 @@ pub fn run_steamcmd(args: &[&str]) -> Result<std::process::Output, std::io::Erro
     let output = steamcmd_command().args(args).output()?;
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::steamcmd_command;
+    use crate::test_support::env_lock;
+    use std::ffi::OsStr;
+
+    #[test]
+    fn steamcmd_command_defaults_to_steamcmd_binary() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
+        }
+
+        let command = steamcmd_command();
+        assert_eq!(command.get_program(), OsStr::new("steamcmd"));
+    }
+
+    #[test]
+    fn steamcmd_command_uses_env_override_when_present() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+
+        unsafe {
+            std::env::set_var("STEAMCMD_PATH", "/tmp/custom-steamcmd");
+        }
+
+        let command = steamcmd_command();
+        assert_eq!(command.get_program(), OsStr::new("/tmp/custom-steamcmd"));
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
+        }
+    }
+}

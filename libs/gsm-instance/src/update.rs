@@ -158,6 +158,7 @@ pub fn update_server<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::env_lock;
     use std::fs;
     use tempfile::tempdir;
 
@@ -176,6 +177,16 @@ mod tests {
 }
 "#;
 
+    #[cfg(unix)]
+    fn write_executable_script(path: &Path, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+
+        fs::write(path, body).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
     #[test]
     fn test_extract_build_id_from_manifest() {
         let build_id = extract_build_id_from_manifest(SAMPLE_MANIFEST);
@@ -186,6 +197,18 @@ mod tests {
     fn test_extract_build_id_from_app_info() {
         let build_id = extract_build_id_from_app_info(SAMPLE_APPINFO);
         assert_eq!(build_id, "1001");
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to extract buildid from manifest")]
+    fn test_extract_build_id_from_manifest_panics_when_missing() {
+        let _ = extract_build_id_from_manifest("\"AppState\" {}\n");
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to extract buildid from appinfo")]
+    fn test_extract_build_id_from_app_info_panics_when_missing() {
+        let _ = extract_build_id_from_app_info("\"appinfo\" {}\n");
     }
 
     #[test]
@@ -217,5 +240,78 @@ mod tests {
 
         let available = update_is_available(&manifest_path, &appinfo_path).unwrap();
         assert!(!available);
+    }
+
+    #[test]
+    fn test_update_info_new_returns_error_for_missing_manifest() {
+        let temp_dir = tempdir().unwrap();
+        let manifest_path = temp_dir.path().join("missing_manifest.acf");
+        let appinfo_path = temp_dir.path().join("appinfo.txt");
+        fs::write(&appinfo_path, SAMPLE_APPINFO).unwrap();
+
+        let error = UpdateInfo::new(&manifest_path, &appinfo_path).unwrap_err();
+        assert!(matches!(error, InstanceError::CommandExecutionError(_)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_update_server_passes_force_windows_and_extra_args() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let temp_dir = tempdir().unwrap();
+        let args_path = temp_dir.path().join("args.txt");
+        let script_path = temp_dir.path().join("fake-steamcmd.sh");
+        let script = format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\n",
+            args_path.display()
+        );
+        write_executable_script(&script_path, &script);
+
+        unsafe {
+            std::env::set_var("STEAMCMD_PATH", &script_path);
+        }
+
+        let extra_args = vec![String::from("+app_info_update 1")];
+        update_server(2278520, temp_dir.path(), true, &extra_args).unwrap();
+
+        let recorded_args = fs::read_to_string(&args_path).unwrap();
+        let lines: Vec<&str> = recorded_args.lines().collect();
+        assert_eq!(lines[0], "+@sSteamCmdForcePlatformType windows");
+        assert_eq!(
+            lines[1],
+            format!("+force_install_dir {}", temp_dir.path().display())
+        );
+        assert_eq!(lines[2], "+login anonymous");
+        assert_eq!(lines[3], "+app_update 2278520 validate");
+        assert_eq!(lines[4], "+app_info_update 1");
+        assert_eq!(lines[5], "+quit");
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_update_server_returns_error_when_command_fails() {
+        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let temp_dir = tempdir().unwrap();
+        let script_path = temp_dir.path().join("failing-steamcmd.sh");
+        write_executable_script(&script_path, "#!/bin/sh\nexit 1\n");
+
+        unsafe {
+            std::env::set_var("STEAMCMD_PATH", &script_path);
+        }
+
+        let error = update_server(2278520, temp_dir.path(), false, &[]).unwrap_err();
+        match error {
+            InstanceError::CommandExecutionError(message) => {
+                assert!(message.contains("Update failed with status"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
+        }
     }
 }
