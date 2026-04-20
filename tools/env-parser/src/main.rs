@@ -144,14 +144,16 @@ fn extract_env_vars_from_file(
             if let Some((_, field_idx, type_idx)) = groups {
                 // If we have an index for the field, fill it
                 if let Some(f_idx) = field_idx
-                    && let Some(field_cap) = caps.get(f_idx) {
-                        entry.field = Some(field_cap.as_str().to_string());
-                    }
+                    && let Some(field_cap) = caps.get(f_idx)
+                {
+                    entry.field = Some(field_cap.as_str().to_string());
+                }
                 // If we have an index for the type, fill it
                 if let Some(t_idx) = type_idx
-                    && let Some(var_type_cap) = caps.get(t_idx) {
-                        entry.var_type = Some(var_type_cap.as_str().to_string());
-                    }
+                    && let Some(var_type_cap) = caps.get(t_idx)
+                {
+                    entry.var_type = Some(var_type_cap.as_str().to_string());
+                }
                 // fetch_var default is group(2)
                 if pattern.contains("fetch_var") && caps.get(2).is_some() {
                     entry.default = Some(caps.get(2).unwrap().as_str().to_string());
@@ -164,9 +166,10 @@ fn extract_env_vars_from_file(
 
             // If "bool", we set the var_type
             if let Some(hardcoded_type) = extra_type
-                && hardcoded_type == "bool" {
-                    entry.var_type = Some("bool".to_string());
-                }
+                && hardcoded_type == "bool"
+            {
+                entry.var_type = Some("bool".to_string());
+            }
         }
     }
 

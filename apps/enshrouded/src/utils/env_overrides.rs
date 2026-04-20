@@ -14,19 +14,19 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
                     .user_groups
                     .iter_mut()
                     .find(|g| g.name.eq_ignore_ascii_case(group_name))
-                {
-                    match field_name.to_lowercase().as_str() {
-                        "password" => group.password = value,
-                        "can_kick_ban" => {
-                            group.can_kick_ban = value.parse().unwrap_or(group.can_kick_ban)
-                        }
-                        "can_access_inventories" => {
-                            group.can_access_inventories =
-                                value.parse().unwrap_or(group.can_access_inventories)
-                        }
-                        _ => {}
+            {
+                match field_name.to_lowercase().as_str() {
+                    "password" => group.password = value,
+                    "can_kick_ban" => {
+                        group.can_kick_ban = value.parse().unwrap_or(group.can_kick_ban)
                     }
+                    "can_access_inventories" => {
+                        group.can_access_inventories =
+                            value.parse().unwrap_or(group.can_access_inventories)
+                    }
+                    _ => {}
                 }
+            }
         }
     }
 }

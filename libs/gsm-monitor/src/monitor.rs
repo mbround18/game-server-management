@@ -70,32 +70,25 @@ impl Monitor {
                 Ok(0) => {
                     if let Ok(metadata) = reader.get_ref().metadata()
                         && let Ok(current_pos) = reader.stream_position()
-                            && metadata.len() < current_pos {
-                                info!(target: INSTANCE_TARGET,
-                                    "Log file {} was truncated/rotated. Re-opening.",
-                                    path.display()
-                                );
-                                match File::open(&path) {
-                                    Ok(new_file) => {
-                                        trace!("Successfully reopened log file");
-                                        reader = BufReader::new(new_file);
-                                        if let Err(e) = reader.seek(SeekFrom::Start(0)) {
-                                            error!(
-                                                "Failed to seek to start of {}: {}",
-                                                path.display(),
-                                                e
-                                            );
-                                        }
-                                    }
-                                    Err(e) => {
-                                        error!(
-                                            "Failed to re-open log file {}: {}",
-                                            path.display(),
-                                            e
-                                        );
-                                    }
+                        && metadata.len() < current_pos
+                    {
+                        info!(target: INSTANCE_TARGET,
+                            "Log file {} was truncated/rotated. Re-opening.",
+                            path.display()
+                        );
+                        match File::open(&path) {
+                            Ok(new_file) => {
+                                trace!("Successfully reopened log file");
+                                reader = BufReader::new(new_file);
+                                if let Err(e) = reader.seek(SeekFrom::Start(0)) {
+                                    error!("Failed to seek to start of {}: {}", path.display(), e);
                                 }
                             }
+                            Err(e) => {
+                                error!("Failed to re-open log file {}: {}", path.display(), e);
+                            }
+                        }
+                    }
                     thread::sleep(Duration::from_millis(100));
                     continue;
                 }

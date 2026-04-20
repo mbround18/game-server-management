@@ -1,14 +1,14 @@
 use crate::config::InstanceConfig;
 use crate::config::LaunchMode;
 use crate::errors::InstanceError;
+use crate::proton;
+use crate::proton::ProtonConfig;
+use std::env;
 use std::fs::File;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tracing::{debug, error};
 use which::which;
-use crate::proton;
-use std::env;
-use crate::proton::ProtonConfig;
 
 enum WindowsCompat {
     Proton { config: ProtonConfig },
@@ -95,7 +95,10 @@ fn is_truthy(val: &str) -> bool {
     val == "1" || val == "true" || val == "yes"
 }
 
-fn find_windows_compatibility(app_id: u32, launch_mode: &LaunchMode) -> Result<WindowsCompat, String> {
+fn find_windows_compatibility(
+    app_id: u32,
+    launch_mode: &LaunchMode,
+) -> Result<WindowsCompat, String> {
     debug!("Searching for Windows compatibility layers");
     let force_proton = env::var("FORCE_PROTON")
         .map(|v| is_truthy(&v))
@@ -126,7 +129,6 @@ fn find_windows_compatibility(app_id: u32, launch_mode: &LaunchMode) -> Result<W
             return result;
         }
     }
-
 
     if let LaunchMode::Wine = launch_mode {
         if let Ok(wine_path) = find_wine() {
@@ -164,7 +166,11 @@ fn find_wine() -> Result<String, String> {
     Err("Neither 'wine64' nor 'wine' was found in the system's PATH.".to_string())
 }
 
-fn get_command_for_windows(exe_path: &str, app_id: u32, launch_mode: &LaunchMode) -> Result<Command, InstanceError> {
+fn get_command_for_windows(
+    exe_path: &str,
+    app_id: u32,
+    launch_mode: &LaunchMode,
+) -> Result<Command, InstanceError> {
     debug!("Getting Windows command for: {}", exe_path);
 
     // Try to find a suitable Windows compatibility layer
@@ -217,7 +223,7 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
         LaunchMode::Native => {
             debug!("Using native command: {}", config.command);
             Command::new(&config.command)
-        },
+        }
         LaunchMode::Proton | LaunchMode::Wine => {
             debug!("Windows executable detected, finding compatibility layer");
             get_command_for_windows(&config.command, config.app_id, &config.launch_mode)?

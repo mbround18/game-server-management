@@ -269,39 +269,59 @@ pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), 
 /// Initialize Proton environment with necessary variables
 pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
     // Setup basic Proton/Wine environment variables
-    let prefix_path = config.prefix.clone().unwrap_or_else(|| "/tmp/proton-prefix".to_string());
+    let prefix_path = config
+        .prefix
+        .clone()
+        .unwrap_or_else(|| "/tmp/proton-prefix".to_string());
     let pfx_path = format!("{}/pfx", prefix_path);
-    
+
     // Critical Proton variables
-    config.env_vars.push(("STEAM_RUNTIME".to_string(), "1".to_string()));
+    config
+        .env_vars
+        .push(("STEAM_RUNTIME".to_string(), "1".to_string()));
     let app_id = env::var("STEAM_APP_ID").unwrap_or_else(|_| config.app_id.clone());
-    config.env_vars.push(("SteamAppId".to_string(), app_id.clone()));
+    config
+        .env_vars
+        .push(("SteamAppId".to_string(), app_id.clone()));
     config.env_vars.push(("SteamGameId".to_string(), app_id));
-    config.env_vars.push(("WINEPREFIX".to_string(), pfx_path.clone()));
-    
+    config
+        .env_vars
+        .push(("WINEPREFIX".to_string(), pfx_path.clone()));
+
     // Setup Steam client paths
     let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
     let steam_root = format!("{}/.local/share/Steam", home);
     let steam_lib_paths = [
         format!("{}/linux64", steam_root),
-        format!("{}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu", steam_root),
-        format!("{}/steamapps/common/SteamLinuxRuntime/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu", steam_root),
-        format!("{}/steamapps/common/SteamLinuxRuntime_soldier/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu", steam_root),
+        format!(
+            "{}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu",
+            steam_root
+        ),
+        format!(
+            "{}/steamapps/common/SteamLinuxRuntime/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu",
+            steam_root
+        ),
+        format!(
+            "{}/steamapps/common/SteamLinuxRuntime_soldier/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu",
+            steam_root
+        ),
     ];
-    
+
     // Find and configure steam libraries
     let mut library_paths = String::new();
     for steam_lib in &steam_lib_paths {
         if Path::new(steam_lib).exists() {
             debug!("Using Steam library path: {}", steam_lib);
-            
+
             // Find steamclient.so
             let steamclient_path = format!("{}/steamclient.so", steam_lib);
             if Path::new(&steamclient_path).exists() {
                 debug!("Found steamclient.so at: {}", steamclient_path);
-                config.env_vars.push(("STEAM_CLIENT_LIBRARY_PATH".to_string(), steam_lib.clone()));
+                config
+                    .env_vars
+                    .push(("STEAM_CLIENT_LIBRARY_PATH".to_string(), steam_lib.clone()));
             }
-            
+
             // Add to library path
             if library_paths.is_empty() {
                 library_paths = steam_lib.clone();
@@ -310,7 +330,7 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
             }
         }
     }
-    
+
     // Add library paths to LD_LIBRARY_PATH
     if !library_paths.is_empty() {
         let current_lib_path = env::var("LD_LIBRARY_PATH").unwrap_or_default();
@@ -319,10 +339,12 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
         } else {
             format!("{}:{}", library_paths, current_lib_path)
         };
-        
-        config.env_vars.push(("LD_LIBRARY_PATH".to_string(), new_lib_path));
+
+        config
+            .env_vars
+            .push(("LD_LIBRARY_PATH".to_string(), new_lib_path));
     }
-    
+
     // Configure optional Proton settings
     for (key, default) in [
         ("PROTON_LOG", "1"),                 // Enable logs to debug issues

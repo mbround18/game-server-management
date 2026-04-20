@@ -1,7 +1,7 @@
-use thiserror::Error;
+use super::types::ProtonRelease;
 use reqwest;
 use serde::Deserialize;
-use super::types::ProtonRelease;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ReleaseError {
@@ -28,7 +28,8 @@ struct GitHubAsset {
     name: String,
 }
 
-const GITHUB_API_URL: &str = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases";
+const GITHUB_API_URL: &str =
+    "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases";
 
 pub fn list_available_releases() -> Result<Vec<ProtonRelease>, ReleaseError> {
     let releases: Vec<GitHubRelease> = reqwest::blocking::Client::new()
