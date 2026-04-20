@@ -59,7 +59,7 @@ fn serialize_value(value: &serde_json::Value, indent: usize) -> String {
         serde_json::Value::Object(map) => {
             // Collect and sort keys alphabetically.
             let mut entries: Vec<_> = map.iter().collect();
-            entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+            entries.sort_by_key(|(a, _)| *a);
             for (key, val) in entries {
                 match val {
                     serde_json::Value::Object(_) => {
