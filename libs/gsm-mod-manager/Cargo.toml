@@ -15,5 +15,5 @@ zip = "8.5.1"
 fs_extra = "1"
 thiserror = "2"
 regex = "1"
-reqwest = {version = "0", features = ["json", "default-tls", "blocking"]}
-gsm-shared = {path = "../gsm-shared"}
+reqwest = { version = "0", features = ["json", "default-tls", "blocking"] }
+gsm-shared = { path = "../gsm-shared" }

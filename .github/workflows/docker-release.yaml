@@ -11,7 +11,8 @@ on:
       - README.md
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
+    github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -47,6 +48,7 @@ jobs:
 
   rust:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
+    with:
 
   release:
     needs:
