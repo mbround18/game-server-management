@@ -68,9 +68,9 @@ impl Monitor {
             let mut line = String::new();
             match reader.read_line(&mut line) {
                 Ok(0) => {
-                    if let Ok(metadata) = reader.get_ref().metadata() {
-                        if let Ok(current_pos) = reader.stream_position() {
-                            if metadata.len() < current_pos {
+                    if let Ok(metadata) = reader.get_ref().metadata()
+                        && let Ok(current_pos) = reader.stream_position()
+                            && metadata.len() < current_pos {
                                 info!(target: INSTANCE_TARGET,
                                     "Log file {} was truncated/rotated. Re-opening.",
                                     path.display()
@@ -96,8 +96,6 @@ impl Monitor {
                                     }
                                 }
                             }
-                        }
-                    }
                     thread::sleep(Duration::from_millis(100));
                     continue;
                 }

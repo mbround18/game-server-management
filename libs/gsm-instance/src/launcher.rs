@@ -74,7 +74,7 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
             let mut cmd = Command::new(proton_path);
             cmd.env(
                 "STEAM_COMPAT_DATA_PATH",
-                &config.working_dir.join("compatdata"),
+                config.working_dir.join("compatdata"),
             ); // Use a separate compatdata dir
             cmd.arg("run"); // Tell Proton to run an executable
             cmd.arg(&config.command);

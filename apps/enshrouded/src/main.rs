@@ -220,8 +220,8 @@ async fn main() {
         }
         Commands::Stop => {
             let webhook_enabled = env::var("WEBHOOK_URL").is_ok();
-            if webhook_enabled {
-                if let Ok(delay_str) = env::var("STOP_DELAY") {
+            if webhook_enabled
+                && let Ok(delay_str) = env::var("STOP_DELAY") {
                     match delay_str.parse::<u64>() {
                         Ok(delay_sec) => {
                             send_notifications(StandardServerEvents::Stopping)
@@ -233,7 +233,6 @@ async fn main() {
                         }
                     }
                 }
-            }
 
             warn!("Stopping Enshrouded server...");
             debug!("Acquiring lock to stop the server...");

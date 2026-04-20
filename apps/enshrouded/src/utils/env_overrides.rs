@@ -9,8 +9,8 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
     for (key, value) in env::vars() {
         if let Some(stripped) = key.strip_prefix("SET_GROUP_") {
             let mut parts = stripped.splitn(2, '_');
-            if let (Some(group_name), Some(field_name)) = (parts.next(), parts.next()) {
-                if let Some(group) = config
+            if let (Some(group_name), Some(field_name)) = (parts.next(), parts.next())
+                && let Some(group) = config
                     .user_groups
                     .iter_mut()
                     .find(|g| g.name.eq_ignore_ascii_case(group_name))
@@ -27,7 +27,6 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
                         _ => {}
                     }
                 }
-            }
         }
     }
 }

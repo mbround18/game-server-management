@@ -447,11 +447,10 @@ impl Default for GameSettings {
         let mut settings = Self::normal();
 
         // If a PRESET env variable is provided, override our base.
-        if let Ok(preset_str) = env::var("PRESET") {
-            if let Ok(preset) = serde_plain::from_str::<Preset>(&preset_str) {
+        if let Ok(preset_str) = env::var("PRESET")
+            && let Ok(preset) = serde_plain::from_str::<Preset>(&preset_str) {
                 settings.apply_preset(preset);
             }
-        }
 
         Self {
             difficulty: env::var("DIFFICULTY").unwrap_or_else(|_| settings.difficulty.clone()),

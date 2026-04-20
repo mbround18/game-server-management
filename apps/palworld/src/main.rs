@@ -3,7 +3,7 @@ mod game_settings;
 mod utils;
 
 use crate::environment::name;
-use clap::{Parser, Subcommand, arg};
+use clap::{Parser, Subcommand};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
 use gsm_monitor::LogRules;
