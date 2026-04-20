@@ -9,7 +9,7 @@ use std::process::Command;
 use tar::Archive;
 use tempfile::tempdir;
 use thiserror::Error;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 use which::which;
 
 mod releases;
