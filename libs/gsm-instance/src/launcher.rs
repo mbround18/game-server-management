@@ -289,7 +289,7 @@ mod tests {
     /// Creates a basic InstanceConfig for testing the launcher.
     fn test_config(launch_mode: LaunchMode) -> InstanceConfig {
         let temp_dir = tempdir().unwrap();
-        let path = temp_dir.into_path();
+        let path = temp_dir.keep().unwrap();
         InstanceConfig {
             app_id: 123456,
             name: "TestServer".to_string(),
