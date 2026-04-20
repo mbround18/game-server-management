@@ -1,9 +1,8 @@
 use crate::config::InstanceConfig;
 use crate::config::LaunchMode;
 use crate::errors::InstanceError;
-use std::fs;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use tracing::{debug, error};
 use which::which;

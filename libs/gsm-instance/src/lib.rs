@@ -34,6 +34,7 @@ pub mod shutdown;
 pub mod startup;
 pub mod steamcmd;
 pub mod update;
+pub mod proton;
 
 // CLI interface for the crate
 
