@@ -1,20 +1,211 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Server Management Documentation</title>
-</head>
-<body>
-    <h1>Game Server Management (GSM) Workspace Documentation</h1>
-    <p>Welcome to the Game Server Management (GSM) workspace documentation.</p>
-    <p>This documentation provides details on all the crates within the GSM workspace.</p>
-    <h2>Important Note on Installation</h2>
-    <p>This project is structured as a Cargo workspace, which means it consists of multiple interdependent crates. These crates are designed to work together and share common dependencies.</p>
-    <p>To ensure that all local path dependencies are correctly resolved, you <strong>must</strong> clone the repository and build the project from the source.</p>
-    <p><strong>Installation via <code>cargo install</code> is not supported and will not work.</strong></p>
-    <p>Please refer to the <a href="https://github.com/mbround18/game-server-management/blob/main/README.md">README.md</a> for instructions on how to build the project.</p>
 
-    <h2>API Documentation</h2>
-    <p>You can find the generated Rust API documentation <a href="./gsm_docs/index.html">here</a>.</p>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind Custom Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-[#0f1115] text-gray-300 font-sans antialiased selection:bg-orange-500/30 selection:text-orange-200">
+
+    <main class="max-w-4xl mx-auto px-6 py-16 md:py-24">
+
+        <!-- Header Section -->
+        <header class="mb-16">
+            <div class="flex items-center gap-3 mb-4">
+                <span
+                    class="px-2 py-1 text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 rounded">v1.0.0</span>
+                <span class="text-gray-600">/</span>
+                <span class="text-sm text-gray-500">Official Workspace Docs</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-semibold text-white tracking-tight mb-6">
+                Game Server Management
+            </h1>
+            <p class="text-lg text-gray-400 leading-relaxed max-w-2xl">
+                The culmination of lessons learned from <a href="#"
+                    class="text-orange-400 hover:underline">valheim-docker</a>. Providing a Docker container enriched
+                with CLI tools for crafting game-specific environments.
+            </p>
+        </header>
+
+        <!-- Manifesto Section -->
+        <section class="mb-16 border-l-2 border-white/10 pl-8 py-2">
+            <h2 class="text-sm uppercase tracking-widest text-gray-500 font-bold mb-4">Manifesto</h2>
+            <blockquote class="text-xl text-gray-200 italic leading-relaxed font-light">
+                "All SteamCMD dedicated servers should be easy to containerize. We simplify deployment, management, and
+                scalability while fostering a vibrant, community-driven ecosystem."
+            </blockquote>
+        </section>
+
+        <!-- Game Catalog Table -->
+        <section class="mb-16">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-5 h-5 text-gray-500"></i>
+                Game Catalog
+            </h2>
+            <div class="overflow-x-auto border border-white/5 rounded-md">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white/[0.02] text-gray-400 border-b border-white/5">
+                        <tr>
+                            <th class="px-6 py-4 font-medium">Game</th>
+                            <th class="px-6 py-4 font-medium">Repository</th>
+                            <th class="px-6 py-4 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="px-6 py-4 text-white font-medium">Valheim</td>
+                            <td class="px-6 py-4"><a href="https://github.com/mbround18/valheim-docker"
+                                    class="text-orange-400 hover:underline">Valheim Docker</a></td>
+                            <td class="px-6 py-4"><span
+                                    class="px-2 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">ORIGIN</span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="px-6 py-4 text-white font-medium">Palworld</td>
+                            <td class="px-6 py-4"><a href="https://github.com/mbround18/palworld-docker"
+                                    class="text-orange-400 hover:underline">Palworld Docker</a></td>
+                            <td class="px-6 py-4"><span
+                                    class="px-2 py-0.5 rounded text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 uppercase">Ready</span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="px-6 py-4 text-white font-medium">Enshrouded</td>
+                            <td class="px-6 py-4"><a href="https://github.com/mbround18/enshrouded-docker"
+                                    class="text-orange-400 hover:underline">Enshrouded Docker</a></td>
+                            <td class="px-6 py-4"><span
+                                    class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">Development</span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="px-6 py-4 text-white font-medium">gsm-cli</td>
+                            <td class="px-6 py-4 text-gray-500 italic">This repository</td>
+                            <td class="px-6 py-4"><span
+                                    class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">Development</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <!-- Documentation Index -->
+        <section class="mb-16">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <i data-lucide="book-marked" class="w-5 h-5 text-gray-500"></i>
+                Module Documentation
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Applications -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Applications</h3>
+                    <div class="flex flex-col gap-2">
+                        <a href="./gsm_cli/index.html"
+                            class="flex items-center justify-between p-3 rounded bg-white/[0.03] border border-white/5 hover:border-orange-500/50 hover:bg-white/[0.05] transition-all group">
+                            <span class="text-gray-200 font-medium">gsm_cli</span>
+                            <i data-lucide="chevron-right"
+                                class="w-4 h-4 text-gray-600 group-hover:text-orange-500"></i>
+                        </a>
+                        <a href="./palworld/index.html"
+                            class="flex items-center justify-between p-3 rounded bg-white/[0.03] border border-white/5 hover:border-orange-500/50 hover:bg-white/[0.05] transition-all group">
+                            <span class="text-gray-200 font-medium">palworld</span>
+                            <i data-lucide="chevron-right"
+                                class="w-4 h-4 text-gray-600 group-hover:text-orange-500"></i>
+                        </a>
+                        <a href="./enshrouded/index.html"
+                            class="flex items-center justify-between p-3 rounded bg-white/[0.03] border border-white/5 hover:border-orange-500/50 hover:bg-white/[0.05] transition-all group">
+                            <span class="text-gray-200 font-medium">enshrouded</span>
+                            <i data-lucide="chevron-right"
+                                class="w-4 h-4 text-gray-600 group-hover:text-orange-500"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Libraries & Internal -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Core Libraries</h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        <a href="./gsm_instance/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_instance
+                        </a>
+                        <a href="./gsm_monitor/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_monitor
+                        </a>
+                        <a href="./gsm_notifications/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_notifications
+                        </a>
+                        <a href="./gsm_backup/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_backup
+                        </a>
+                        <a href="./gsm_mod_manager/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_mod_manager
+                        </a>
+                        <a href="./gsm_shared/index.html"
+                            class="p-2 text-sm text-gray-400 hover:text-white flex items-center gap-2 group">
+                            <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-orange-500"></div>
+                            gsm_shared
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-6 text-sm text-gray-500">
+                <a href="./docs/CONTRIBUTING.md" class="hover:text-white">Contributing</a>
+                <a href="./LICENSE" class="hover:text-white">BSD 3-Clause</a>
+                <a href="https://github.com/mbround18/game-server-management" class="hover:text-white">GitHub</a>
+            </div>
+            <p class="text-sm text-gray-600">Generated with Rustdoc & Tailwind</p>
+        </footer>
+
+    </main>
+
+    <!-- Initialize Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
+
 </html>
