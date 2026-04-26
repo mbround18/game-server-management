@@ -23,17 +23,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate a token
-        id: generate_token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # 3beb63f, https://github.com/tibdex/github-app-token/releases/latest
+      - uses: actions/create-github-app-token@v3
+        id: app-token
         with:
-          app_id: ${{ vars.APP_CLIENT_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
         with:
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # e97e2d8, https://github.com/dtolnay/rust-toolchain/releases/latest
@@ -63,6 +62,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # cd2ce8f, https://github.com/actions/deploy-pages/releases/latest
+        with:
+          token: ${{ steps.app-token.outputs.token }}
