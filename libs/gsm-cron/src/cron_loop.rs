@@ -19,6 +19,7 @@ use tokio::time::sleep;
 /// ```rust,no_run
 /// use gsm_cron::{register_job, begin_cron_loop};
 ///
+/// #[tokio::main]
 /// async fn main() {
 ///     // Register a job to run every minute.
 ///     register_job("heartbeat", "* * * * *", || {
