@@ -74,6 +74,8 @@ RUN mkdir -p ${STEAMCMD_DIR} && cd ${STEAMCMD_DIR} && \
     curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
     ./steamcmd.sh +quit
 
+COPY --from=builder /home/rustuser/artifacts/* /usr/local/bin/
+
 ENV STEAMCMD_PATH="${STEAMCMD_DIR}/steamcmd.sh"
 ENV PATH="${PATH}:${STEAMCMD_DIR}"
 
@@ -99,12 +101,6 @@ ENV STEAM_COMPAT_DATA_PATH="/home/steam/compatdata"
 RUN mkdir -p ${PROTON_DIR} ${STEAM_COMPAT_DATA_PATH} && \
     curl -sqL "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${PROTON_VERSION}/${PROTON_VERSION}.tar.gz" | tar -C ${PROTON_DIR} -zxvf -
 
-ENV PATH="${PATH}:${PROTON_DIR}/${PROTON_VERSION}"
-
-# Final Production Stage: Application + SteamCMD/Proton
-FROM steamcmd-proton AS final
-USER root
-# Copy the compiled Rust binaries exported by the builder
 COPY --from=builder /home/rustuser/artifacts/* /usr/local/bin/
-USER steam
-CMD ["bash"]
+
+ENV PATH="${PATH}:${PROTON_DIR}/${PROTON_VERSION}"

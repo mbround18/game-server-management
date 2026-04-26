@@ -1,18 +1,18 @@
 services:
   runtime:
-    image: mbround18/gsm-reference:latest
+    image: mbround18/gsm-reference:${VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       target: runtime
   steamcmd:
-    image: mbround18/gsm-steamcmd:latest
+    image: mbround18/gsm-steamcmd:${VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       target: steamcmd
   steamcmd-proton:
-    image: mbround18/gsm-steamcmd-proton:latest
+    image: mbround18/gsm-steamcmd-proton:${VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile

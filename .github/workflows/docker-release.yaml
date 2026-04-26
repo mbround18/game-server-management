@@ -9,6 +9,8 @@ on:
       - main
     paths-ignore:
       - README.md
+    tags:
+      - "v*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
@@ -18,15 +20,35 @@ concurrency:
 jobs:
   rust:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
   docker-compose:
     needs:
       - rust
     runs-on: ubuntu-latest
+    if: ${{ always() }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
 
+      - name: Set VERSION from tag or use latest
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="latest"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
       - name: Build images from compose
         run: |
           docker compose -f compose.yml build
+        env:
+          VERSION: ${{ env.VERSION }}
+
+      - name: Push images to registry
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          docker compose -f compose.yml push
+        env:
+          VERSION: ${{ env.VERSION }}
