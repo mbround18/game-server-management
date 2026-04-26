@@ -1,3 +1,11 @@
+//! # Game Server Backup Utility
+//!
+//! This crate provides functionality for creating compressed tarball backups of game server data.
+//! It is designed to be a reusable component within the Game Server Management (GSM) workspace.
+//!
+//! The primary function, `backup`, takes an input directory and an output path, and creates a
+//! `.tar.gz` archive of the directory's contents. It includes features for skipping certain
+//! files, such as auto-backups, to avoid redundant data in the archives.
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use glob::glob;
@@ -9,6 +17,8 @@ use thiserror::Error;
 use tracing::{debug, error, info};
 
 /// Custom error type for backup failures.
+///
+/// This enum represents the possible errors that can occur during the backup process.
 #[derive(Debug, Error)]
 pub enum BackupError {
     #[error("Failed to create backup file at {0}")]
@@ -23,35 +33,57 @@ pub enum BackupError {
     IoError(#[from] IoError),
 }
 
-/// Creates a compressed tar archive (tar.gz) backup of all files under the input directory.
+/// Creates a compressed tar archive (`.tar.gz`) of all files under a specified directory.
+///
+/// This function is the core of the backup utility. It traverses a given directory and
+/// creates a compressed archive of its contents. This is useful for creating backups of
+/// game server data, which can then be stored or managed as a single file.
 ///
 /// # Parameters
 ///
-/// - `input`: The directory to backup (all files matching `input/**/*` will be included).
-/// - `output`: The path for the output tar.gz archive.
+/// - `input`: The directory to backup. All files and subdirectories within this path will be
+///   included in the archive, processed recursively.
+/// - `output`: The path for the output `.tar.gz` archive. If the file already exists, it will
+///   be overwritten.
 ///
 /// # Behavior
 ///
-/// - Files whose paths contain the substring `"backup_auto"` are skipped.
-/// - The backup file is created using a gzip encoder with default compression.
+/// - The function recursively includes all files and directories under the `input` path.
+/// - Any file or directory whose path contains the substring `"backup_auto"` will be skipped.
+///   This is useful for excluding auto-generated backups from a manual backup.
+/// - The backup file is created using a gzip encoder with default compression settings.
+/// - If an error occurs during the archiving process, the partially created output file
+///   will be deleted to avoid leaving incomplete backups.
 ///
 /// # Errors
 ///
-/// Returns a `BackupError` if:
-/// - The input directory does not exist or is not a directory.
-/// - The output file cannot be created.
-/// - A glob pattern cannot be read.
-/// - Any file cannot be added to the tar archive.
-/// - The archive cannot be finished.
+/// This function will return a `BackupError` if any of the following occurs:
+/// - The `input` directory does not exist or is not a directory.
+/// - The `output` file cannot be created (e.g., due to file permissions).
+/// - A glob pattern for traversing files is invalid.
+/// - An error occurs while reading a file or directory entry.
+/// - A file cannot be added to the tar archive.
+/// - The tar archive cannot be finalized.
 ///
 /// # Examples
 ///
 /// ```rust,no_run
-/// # // Note: This example is marked `no_run` because it requires the "data" directory to exist.
-/// # use std::error::Error;
-/// # fn main() -> Result<(), Box<dyn Error>> {
-/// // Backup the directory "data" into "backup.tar.gz"
-/// gsm_backup::backup("data", "backup.tar.gz")?;
+/// # use std::fs::{File, create_dir_all};
+/// # use std::io::Write;
+/// # use tempfile::tempdir;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create a temporary directory and a file to backup.
+/// let tmp_dir = tempdir()?;
+/// let file_path = tmp_dir.path().join("my_game_data.txt");
+/// let mut file = File::create(&file_path)?;
+/// writeln!(file, "Some important game data.")?;
+///
+/// // Define the output path for the backup.
+/// let backup_path = tmp_dir.path().join("backup.tar.gz");
+///
+/// // Perform the backup.
+/// gsm_backup::backup(tmp_dir.path(), &backup_path)?;
+///
 /// # Ok(())
 /// # }
 /// ```

@@ -1,5 +1,33 @@
+//! # Environment Variable Parsing Macro
+//!
+//! This crate provides a convenient macro for parsing environment variables into a specified type, with a fallback to a default value.
+//!
+//! The `env_parse!` macro simplifies the common pattern of reading an environment variable, parsing it, and using a default value if the variable is not set or parsing fails.
 extern crate proc_macro;
 
+/// Parses an environment variable into a specified type, falling back to a default value.
+///
+/// This macro attempts to read an environment variable, parse it into the given type (`$t`),
+/// and returns the parsed value. If the environment variable is not set or if parsing fails,
+/// it returns the provided default value (`$default`).
+///
+/// # Arguments
+///
+/// * `$env_var`: The name of the environment variable to parse (a string literal).
+/// * `$default`: The default value to use if the environment variable is not present or parsing fails.
+/// * `$t`: The target type to parse the environment variable into.
+///
+/// # Examples
+///
+/// ```
+/// use env_parse::env_parse;
+///
+/// // Example 1: Parse a u32 value, with a default.
+/// let port = env_parse!("PORT", 8080, u32);
+///
+/// // Example 2: Parse a String value.
+/// let server_name = env_parse!("SERVER_NAME", String::from("localhost"), String);
+/// ```
 #[macro_export]
 macro_rules! env_parse {
     ($env_var:expr, $default:expr, $t:ty) => {

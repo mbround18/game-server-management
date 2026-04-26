@@ -1,3 +1,12 @@
+//! # Proton Management
+//!
+//! This module provides functionality for finding, downloading, and configuring Proton,
+//! Valve's compatibility tool for running Windows games on Linux. It is a key component
+//! for enabling Windows-based game servers to run in a Linux environment.
+//!
+//! The module can automatically locate installed Proton versions, download specific
+//! versions from GitHub, and set up the necessary environment for a game server to
+//! use Proton.
 use flate2::read::GzDecoder;
 use glob::glob;
 use reqwest;
@@ -20,33 +29,48 @@ pub use releases::{
 };
 pub use types::{ProtonRelease, ProtonVersion, VersionError, parse_version};
 
+/// Represents errors that can occur during Proton-related operations.
 #[derive(Error, Debug)]
 pub enum ProtonError {
+    /// An I/O error occurred, such as failing to create a directory or file.
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 
+    /// A network error occurred, such as failing to download a Proton release.
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
 
+    /// Proton could not be found, either locally or through download.
     #[error("Failed to find proton: {0}")]
     NotFound(String),
 
+    /// An error occurred during path conversion.
     #[error("Path conversion error")]
     PathConversion,
 
+    /// An error related to environment variables.
     #[error("Environment error: {0}")]
     EnvError(String),
 }
 
+/// Configuration for a Proton instance.
+///
+/// This struct holds the necessary information to configure and run a game server with Proton.
 pub struct ProtonConfig {
+    /// The path to the Proton executable.
     pub path: String,
+    /// The path to the Wine prefix to be used by Proton.
     pub prefix: Option<String>,
+    /// The version of Proton.
     pub version: String,
+    /// The Steam App ID of the game being run.
     pub app_id: String,
+    /// A list of environment variables to be set for the Proton environment.
     pub env_vars: Vec<(String, String)>,
 }
 
 impl ProtonConfig {
+    /// Creates a `Command` to run a game executable with Proton.
     pub fn create_command(&self, game_exe: &str) -> Command {
         let mut cmd = Command::new(&self.path);
         cmd.arg("runinprefix").arg(game_exe);
@@ -65,7 +89,16 @@ impl ProtonConfig {
     }
 }
 
-/// Find an installed Proton version based on version pattern
+/// Finds an installed Proton version based on a version pattern.
+///
+/// This function searches for a Proton installation in common Steam and custom directories.
+/// It can search for a specific version or the first one it finds. If a version is not
+/// found locally, it will attempt to download it if a version string is provided.
+///
+/// # Arguments
+///
+/// * `version`: An optional version string. If `Some`, it will look for a matching version.
+///   If `None`, it will return the first Proton installation it finds.
 pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
     let proton_dir = env::var("PROTON_DIR").unwrap_or_else(|_| format!("{home}/proton"));
@@ -163,6 +196,7 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     ))
 }
 
+/// Creates a `ProtonConfig` from a given path and version string.
 fn create_proton_config<P: AsRef<Path>>(
     path: P,
     version: &str,
@@ -190,7 +224,14 @@ fn create_proton_config<P: AsRef<Path>>(
     })
 }
 
-/// Download and install a specific version of Proton GE
+/// Downloads and installs a specific version of Proton GE.
+///
+/// This function downloads a Proton GE release from GitHub, extracts it to the
+/// appropriate directory, and returns a `ProtonConfig` for it.
+///
+/// # Arguments
+///
+/// * `version`: The version of Proton GE to download (e.g., "GE-Proton8-25").
 pub fn download_proton(version: &str) -> Result<ProtonConfig, ProtonError> {
     // Define the download URL and target directory
     let download_url = format!(
@@ -240,7 +281,15 @@ pub fn download_proton(version: &str) -> Result<ProtonConfig, ProtonError> {
     create_proton_config(&proton_path, version)
 }
 
-/// Set up the Proton prefix for a game
+/// Sets up the Proton prefix for a game.
+///
+/// This function ensures the Wine prefix directory exists and configures the `ProtonConfig`
+/// with the necessary environment variables for that prefix.
+///
+/// # Arguments
+///
+/// * `config`: A mutable reference to the `ProtonConfig`.
+/// * `prefix_path`: The path to the Wine prefix directory.
 pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), ProtonError> {
     // Ensure the prefix directory exists
     debug!("Setting up Proton prefix at {}", prefix_path);
@@ -269,7 +318,14 @@ pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), 
     Ok(())
 }
 
-/// Initialize Proton environment with necessary variables
+/// Initializes the Proton environment with necessary variables.
+///
+/// This function sets up a collection of environment variables that are required for
+/// Proton to function correctly, including paths, Steam App ID, and other settings.
+///
+/// # Arguments
+///
+/// * `config`: A mutable reference to the `ProtonConfig` to be updated with environment variables.
 pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
     // Setup basic Proton/Wine environment variables
     let prefix_path = config

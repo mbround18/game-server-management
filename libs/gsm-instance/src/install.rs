@@ -1,17 +1,13 @@
-//! # Install Module
+//! # Game Server Installation
 //!
-//! This module provides a function to install (or update) a game server
-//! using SteamCMD. It builds the SteamCMD command based on the provided
-//! Steam App ID, installation directory, and additional arguments.
+//! This module provides the core functionality for installing or updating a game server
+//! using SteamCMD. It abstracts the process of constructing and executing the necessary
+//! SteamCMD command.
 //!
-//! The command constructed is similar to:
-//!
-//! ```sh
-//! steamcmd +login anonymous +force_install_dir "<install_dir>" +app_update <app_id> validate [extra args...] +quit
-//! ```
-//!
-//! Environment variables such as `ADDITIONAL_STEAMCMD_ARGS`, `USE_BETA`, `BETA_BRANCH`,
-//! and `BETA_BRANCH_PASSWORD` can be used to further customize the install command.
+//! The main function, `install`, takes care of logging in, setting the installation
+//! directory, and running the `app_update` command with validation. It also supports
+//! additional arguments and environment variables for more advanced configurations,
+//! such as installing a beta branch.
 //!
 //! # Example
 //!
@@ -19,13 +15,16 @@
 //! use std::path::Path;
 //! use gsm_instance::install::install;
 //!
-//! // Install server with app_id 123456 to the specified working directory
-//! let extra_args = vec!["verbose".to_string()];
-//! let status = install(123456, Path::new("/home/steam/myserver"), false, &extra_args)
+//! // Install a server with App ID 123456 to a specified directory.
+//! let app_id = 123456;
+//! let install_dir = Path::new("/home/steam/myserver");
+//! let extra_args = vec!["-beta".to_string(), "preview".to_string()];
+//!
+//! let status = install(app_id, install_dir, false, &extra_args)
 //!     .expect("Installation failed");
+//!
 //! assert!(status.success());
 //! ```
-
 use crate::executable::execute_mut;
 use crate::steamcmd::steamcmd_command;
 use std::env;
@@ -34,7 +33,11 @@ use std::path::Path;
 use std::process::{ExitStatus, Stdio};
 use tracing::{debug, info};
 
-/// Adds any additional SteamCMD arguments from the environment.
+/// Adds additional SteamCMD arguments from the `ADDITIONAL_STEAMCMD_ARGS` environment variable.
+///
+/// This function checks for the `ADDITIONAL_STEAMCMD_ARGS` environment variable and, if it
+/// is set, appends its value to the provided argument list. The value is trimmed of
+/// whitespace and surrounding quotes.
 fn add_additional_args(args: &mut Vec<String>) {
     if let Ok(extra_args) = env::var("ADDITIONAL_STEAMCMD_ARGS") {
         let trimmed = extra_args.trim_matches('"').trim();
@@ -44,20 +47,35 @@ fn add_additional_args(args: &mut Vec<String>) {
     }
 }
 
-/// Installs (or updates) the server using SteamCMD.
+/// Installs or updates a game server using SteamCMD.
+///
+/// This function constructs and executes the SteamCMD command required to install or
+/// update a game server. It handles logging in, setting the installation directory,
+// and running the `app_update` command.
 ///
 /// # Parameters
-/// - `app_id`: The Steam App ID of the server.
+///
+/// - `app_id`: The Steam App ID of the game server to install or update.
 /// - `install_dir`: The directory where the server should be installed.
-/// - `extra_args`: A vector of extra arguments to append to the SteamCMD command.
+/// - `force_windows`: If `true`, configures SteamCMD to download the Windows version of
+///   the server, which is necessary for running with Wine or Proton.
+/// - `extra_args`: A slice of extra arguments to append to the SteamCMD command, which
+///   can be used for things like specifying a beta branch.
 ///
 /// # Returns
-///  an `io::Result<ExitStatus>` indicating the success or failure of the command execution.
+///
+/// Returns an `io::Result<ExitStatus>` that indicates whether the SteamCMD process
+/// executed successfully.
 ///
 /// # Behavior
-/// - The command logs in as anonymous, forces the install directory, updates the app (with validation),
-///   appends any extra arguments and beta-related options, then quits.
-/// - Environment variables (`ADDITIONAL_STEAMCMD_ARGS`, `USE_BETA`, etc.) allow further customization.
+///
+/// - The function logs in to Steam as an anonymous user.
+/// - It forces the installation to the specified `install_dir`.
+/// - It runs `app_update` with the `validate` option to ensure file integrity.
+/// - It appends any extra arguments from the `extra_args` parameter and the
+///   `ADDITIONAL_STEAMCMD_ARGS` environment variable.
+/// - The command's standard output and error are inherited, so they will be displayed
+///   in the console.
 pub fn install<P: AsRef<Path>>(
     app_id: u32,
     install_dir: P,

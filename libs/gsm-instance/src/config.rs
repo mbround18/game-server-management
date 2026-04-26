@@ -1,63 +1,81 @@
+//! # Instance Configuration
+//!
+//! This module defines the structures and enumerations used to configure a game server instance.
+//! The central piece is the `InstanceConfig` struct, which holds all the necessary settings
+//! for installing, running, and managing a game server.
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Defines the launch mode for the game server.
+///
+/// This enum allows specifying how the game server executable should be run, which is
+/// particularly useful for handling cross-platform compatibility (e.g., running a
+/// Windows-based server on Linux).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LaunchMode {
+    /// Run the server executable natively. This is the default.
     Native,
+    /// Run the server using Wine. This is typically used for Windows executables on Linux.
     Wine,
+    /// Run the server using Proton, which is Valve's compatibility tool for running
+    /// Windows games on Linux.
     Proton,
 }
 
-/// Configuration for a game server instance managed by gsm-instance.
+/// Configuration for a game server instance managed by `gsm-instance`.
 ///
-/// This struct holds all parameters needed to configure the game server:
-/// - `app_id`: The Steam App ID for the game server.
-/// - `name`: The display name of the server.
-/// - `command`: The executable command or path to launch the server.
-/// - `install_args`: Additional arguments to pass to steamcmd during install/update.
-/// - `launch_args`: Additional arguments to pass when launching the server.
-/// - `force_windows`: If true, forces the Windows version to be installed/used,
-///   which may be needed for launching with Wine64.
-/// - `working_dir`: The working directory where the server will be installed and run.
+/// This struct holds all the parameters needed to configure and manage a game server,
+/// from installation with SteamCMD to launching the server process. It is the primary
+/// configuration object used throughout the `gsm-instance` crate.
 ///
 /// # Example
 ///
 /// ```rust
-/// use gsm_instance::config::InstanceConfig;
+/// use gsm_instance::config::{InstanceConfig, LaunchMode};
 /// use std::path::PathBuf;
 ///
 /// let config = InstanceConfig {
 ///     app_id: 123456,
 ///     name: "My Awesome Server".to_string(),
 ///     command: "server_executable".to_string(),
-///     install_args: vec!["+install_flag".to_string(), "value".to_string()],
+///     install_args: vec!["+beta".to_string(), "preview".to_string()],
 ///     launch_args: vec!["-nographics".to_string(), "-batchmode".to_string()],
 ///     force_windows: true,
 ///     working_dir: PathBuf::from("/home/steam/myserver"),
-///     launch_mode: gsm_instance::config::LaunchMode::Native,
+///     launch_mode: LaunchMode::Proton,
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstanceConfig {
-    /// The Steam App ID for the game server.
+    /// The Steam App ID for the game server. This is used by SteamCMD to identify which
+    /// game server to install or update.
     pub app_id: u32,
-    /// The name of the server.
+    /// A user-friendly name for the server, primarily used for logging and identification.
     pub name: String,
-    /// The command (or executable path) used to launch the server.
+    /// The command or executable path used to launch the server. This can be a simple
+    /// executable name (e.g., `valheim_server.x86_64`) or a path relative to the
+    /// `working_dir`.
     pub command: String,
-    /// Additional arguments for the installation/update process.
+    /// A list of additional arguments to pass to SteamCMD during the installation or
+    /// update process. This can be used for things like selecting a beta branch.
     pub install_args: Vec<String>,
-    /// Additional arguments for launching the server.
+    /// A list of additional arguments to pass to the server executable when it is launched.
     pub launch_args: Vec<String>,
-    /// When set to `true`, forces the installation and launch of the Windows version (via Wine64).
+    /// If `true`, forces the installation and launch of the Windows version of the game
+    /// server, typically for use with Wine or Proton on Linux.
     pub force_windows: bool,
-    /// The working directory for the server.
+    /// The working directory where the server will be installed and run. All server-related
+    /// files, logs, and the PID file will be stored here.
     pub working_dir: PathBuf,
-
+    /// The launch mode for the server, which determines how the executable is run.
     pub launch_mode: LaunchMode,
 }
 
 impl Default for InstanceConfig {
+    /// Creates a default `InstanceConfig` with empty or default values.
+    ///
+    /// The default configuration is not typically useful on its own, but it provides a
+    /// convenient starting point for building a configuration.
     fn default() -> Self {
         Self {
             app_id: 0,
@@ -73,18 +91,25 @@ impl Default for InstanceConfig {
 }
 
 impl InstanceConfig {
+    /// Returns the path to the PID file for the instance.
+    ///
+    /// The PID file is used to store the process ID of the running server, which allows
+    /// for managing the server process (e.g., stopping or checking its status).
     pub fn pid_file(&self) -> PathBuf {
         self.working_dir.join("instance.pid")
     }
 
+    /// Returns the path to the log directory for the instance.
     pub fn log_dir(&self) -> PathBuf {
         self.working_dir.join("logs")
     }
 
+    /// Returns the path to the standard output log file for the server.
     pub fn stdout(&self) -> PathBuf {
         self.log_dir().join("server.log")
     }
 
+    /// Returns the path to the standard error log file for the server.
     pub fn stderr(&self) -> PathBuf {
         self.log_dir().join("server.err")
     }

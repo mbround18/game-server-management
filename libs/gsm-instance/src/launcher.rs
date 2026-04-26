@@ -1,3 +1,11 @@
+//! # Game Server Launcher
+//!
+//! This module is responsible for launching the game server executable. It handles different
+//! launch modes, including native execution, and compatibility layers like Wine and Proton
+//! for running Windows servers on Linux.
+//!
+//! The main entry point is the `launch_server` function, which takes an `InstanceConfig`
+//! and constructs a `Command` ready to be executed.
 use crate::config::InstanceConfig;
 use crate::config::LaunchMode;
 use crate::errors::InstanceError;
@@ -11,13 +19,18 @@ use std::process::{Command, Stdio};
 use tracing::{debug, error};
 use which::which;
 
+/// Represents the Windows compatibility layer to use for launching the server.
 enum WindowsCompat {
+    /// Use Proton, with a specific `ProtonConfig`.
     Proton { config: ProtonConfig },
+    /// Use Wine, with the specified path to the Wine executable.
     Wine { path: String },
+    /// No compatibility layer.
     None,
 }
 
 impl WindowsCompat {
+    /// Creates a `Command` for the given game executable using the compatibility layer.
     fn create_command(&self, game_exe: &str) -> Option<Command> {
         match self {
             WindowsCompat::Proton { config } => {
@@ -38,6 +51,7 @@ impl WindowsCompat {
     }
 }
 
+/// Tries to find a Proton installation, either a specific version or any available version.
 fn try_find_proton(
     version_option: Option<&str>,
     force_proton: bool,
@@ -71,6 +85,7 @@ fn try_find_proton(
     }
 }
 
+/// Sets up the Proton prefix and environment variables for a given `ProtonConfig`.
 fn setup_proton_config(mut config: ProtonConfig) -> Result<WindowsCompat, String> {
     if let Ok(home) = env::var("HOME") {
         let prefix_path = format!("{}/.proton/prefixes/gsm", home);
@@ -92,10 +107,13 @@ fn setup_proton_config(mut config: ProtonConfig) -> Result<WindowsCompat, String
     Ok(WindowsCompat::Proton { config })
 }
 
+/// Checks if a string value represents a truthy value.
 fn is_truthy(val: &str) -> bool {
     val == "1" || val == "true" || val == "yes"
 }
 
+/// Finds a suitable Windows compatibility layer (Proton or Wine) based on the launch mode
+/// and environment variables.
 fn find_windows_compatibility(
     app_id: u32,
     launch_mode: &LaunchMode,
@@ -148,6 +166,7 @@ fn find_windows_compatibility(
     Ok(WindowsCompat::None)
 }
 
+/// Finds the path to the Wine executable (`wine64` or `wine`).
 fn find_wine() -> Result<String, String> {
     // Attempt to find 'wine64' first
     if let Ok(path) = which("wine64") {
@@ -167,6 +186,7 @@ fn find_wine() -> Result<String, String> {
     Err("Neither 'wine64' nor 'wine' was found in the system's PATH.".to_string())
 }
 
+/// Creates a `Command` for a Windows executable, using a compatibility layer if available.
 fn get_command_for_windows(
     exe_path: &str,
     app_id: u32,
@@ -217,6 +237,30 @@ fn get_command_for_windows(
     Ok(cmd)
 }
 
+/// Prepares a `Command` to launch the game server based on the provided configuration.
+///
+/// This function constructs a `Command` that is ready to be spawned as a child process.
+/// It sets up the executable, arguments, working directory, and log files based on the
+/// `InstanceConfig`.
+///
+/// # Arguments
+///
+/// * `config`: A reference to the `InstanceConfig` for the server.
+///
+/// # Returns
+///
+/// A `Result` containing the configured `Command`, or an `InstanceError` if something
+/// goes wrong (e.g., a log file cannot be created).
+///
+/// # Behavior
+///
+/// - If `launch_mode` is `Native`, it creates a simple command for the executable.
+/// - If `launch_mode` is `Proton` or `Wine`, it attempts to find a suitable compatibility
+///   layer and constructs the command accordingly.
+/// - It appends any `launch_args` from the configuration.
+/// - It sets the working directory to `config.working_dir`.
+/// - It creates the log directory and redirects the command's `stdout` and `stderr` to
+///   log files (`server.log` and `server.err`).
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
     debug!("Launching server with config: {:?}", config);
 
