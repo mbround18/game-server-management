@@ -49,6 +49,9 @@ jobs:
       - name: Build Docs
         run: cargo doc --workspace --no-deps --all-features
 
+      - name: Copy index.html to doc root
+        run: cp docs/index.html target/doc/index.html
+
       - name: Create .nojekyll
         run: touch target/doc/.nojekyll
 
