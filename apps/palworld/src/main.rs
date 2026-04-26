@@ -3,7 +3,7 @@ mod game_settings;
 mod utils;
 
 use crate::environment::name;
-use clap::{Parser, Subcommand, arg};
+use clap::{Parser, Subcommand};
 use gsm_cron::{begin_cron_loop, register_job};
 use gsm_instance::{Instance, InstanceConfig};
 use gsm_monitor::LogRules;
@@ -81,6 +81,7 @@ async fn main() {
             args
         },
         force_windows: false,
+        launch_mode: gsm_instance::config::LaunchMode::Native,
         working_dir: PathBuf::from("/home/steam/palworld"),
     };
     debug!("Instance configuration set: {:?}", instance_config);

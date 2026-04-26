@@ -79,6 +79,7 @@ async fn main() {
         launch_args: vec![],
         force_windows: true,
         working_dir: PathBuf::from("/home/steam/enshrouded"),
+        launch_mode: gsm_instance::config::LaunchMode::Wine,
     };
     debug!("Instance configuration set: {:?}", instance_config);
 
@@ -219,17 +220,15 @@ async fn main() {
         }
         Commands::Stop => {
             let webhook_enabled = env::var("WEBHOOK_URL").is_ok();
-            if webhook_enabled {
-                if let Ok(delay_str) = env::var("STOP_DELAY") {
-                    match delay_str.parse::<u64>() {
-                        Ok(delay_sec) => {
-                            send_notifications(StandardServerEvents::Stopping)
-                                .expect("Failed to send webhook event! Invalid url?");
-                            tokio::time::sleep(Duration::from_secs(delay_sec)).await;
-                        }
-                        Err(_) => {
-                            error!("Invalid STOP_DELAY value: {}", delay_str);
-                        }
+            if webhook_enabled && let Ok(delay_str) = env::var("STOP_DELAY") {
+                match delay_str.parse::<u64>() {
+                    Ok(delay_sec) => {
+                        send_notifications(StandardServerEvents::Stopping)
+                            .expect("Failed to send webhook event! Invalid url?");
+                        tokio::time::sleep(Duration::from_secs(delay_sec)).await;
+                    }
+                    Err(_) => {
+                        error!("Invalid STOP_DELAY value: {}", delay_str);
                     }
                 }
             }

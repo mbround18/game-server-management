@@ -1,0 +1,68 @@
+services:
+  runtime:
+    image: mbround18/gsm-reference:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+  steamcmd:
+    image: mbround18/gsm-steamcmd:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: steamcmd
+  steamcmd-proton:
+    image: mbround18/gsm-steamcmd-proton:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: steamcmd-proton
+
+#   windrose:
+#     image: mbround18/gsm-windrose:latest
+#     network_mode: host
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#       target: final
+#     init: true
+#     restart: unless-stopped
+#     environment:
+#       NAME: Windrose Dedicated Server
+#       APP_ID: "4129620"
+#       INSTALL_PATH: /home/steam/windrose
+#       FORCE_WINDOWS: "true"
+#       LAUNCH_MODE: proton
+#       PROTON_VERSION: GE-Proton10-34
+#       EXECUTABLE: /home/steam/windrose/R5/Binaries/Win64/WindroseServer-Win64-Shipping.exe
+#       LAUNCH_ARGS: ${WINDROSE_LAUNCH_ARGS:--log}
+#       AUTO_UPDATE: ${WINDROSE_AUTO_UPDATE:-false}
+#       AUTO_UPDATE_SCHEDULE: ${WINDROSE_AUTO_UPDATE_SCHEDULE:-0 3 * * *}
+#     volumes:
+#       - ./data/windrose/server:/home/steam/windrose
+#       - ./data/windrose/compatdata:/home/steam/compatdata
+#       - windrose-proton:/home/steam/proton
+#     ports:
+#       - "7777:7777/udp"
+#       - "7778:7778/udp"
+#     healthcheck:
+#       test:
+#         - CMD-SHELL
+#         - pid=$$(cat /home/steam/windrose/instance.pid 2>/dev/null) && [ -n
+#           "$$pid" ] && [ -r "/proc/$$pid/stat" ] && state=$$(awk '{print $$3}'
+#           "/proc/$$pid/stat") && [ "$$state" != "Z" ]
+#       interval: 30s
+#       timeout: 5s
+#       retries: 3
+#       start_period: 15m
+#     command:
+#       - /bin/bash
+#       - -lc
+#       - |
+#         set -euo pipefail
+#         gsm-cli install
+#         gsm-cli start
+#         exec gsm-cli monitor
+
+# volumes:
+#   windrose-proton:

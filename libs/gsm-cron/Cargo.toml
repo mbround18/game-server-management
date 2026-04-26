@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tracing = "0"
 cron = "0"
-chrono = "0.4.41"
-tokio = "1.47.1"
+chrono = "0.4.44"
+tokio = "1.52.1"
 gsm-shared = {path = "../gsm-shared"}
-nix = { version = "0.31.0", features = ["signal"] }
+nix = { version = "0.31.2", features = ["signal"] }

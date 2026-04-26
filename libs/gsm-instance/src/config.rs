@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LaunchMode {
+    Native,
+    Wine,
+    Proton,
+}
+
 /// Configuration for a game server instance managed by gsm-instance.
 ///
 /// This struct holds all parameters needed to configure the game server:
@@ -27,6 +34,7 @@ use std::path::PathBuf;
 ///     launch_args: vec!["-nographics".to_string(), "-batchmode".to_string()],
 ///     force_windows: true,
 ///     working_dir: PathBuf::from("/home/steam/myserver"),
+///     launch_mode: gsm_instance::config::LaunchMode::Native,
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +53,8 @@ pub struct InstanceConfig {
     pub force_windows: bool,
     /// The working directory for the server.
     pub working_dir: PathBuf,
+
+    pub launch_mode: LaunchMode,
 }
 
 impl Default for InstanceConfig {
@@ -57,6 +67,7 @@ impl Default for InstanceConfig {
             launch_args: Vec::new(),
             force_windows: false,
             working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            launch_mode: LaunchMode::Native,
         }
     }
 }
@@ -76,5 +87,67 @@ impl InstanceConfig {
 
     pub fn stderr(&self) -> PathBuf {
         self.log_dir().join("server.err")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InstanceConfig, LaunchMode};
+
+    #[test]
+    fn default_config_uses_empty_values_and_native_mode() {
+        let config = InstanceConfig::default();
+
+        assert_eq!(config.app_id, 0);
+        assert_eq!(config.name, "");
+        assert_eq!(config.command, "");
+        assert!(config.install_args.is_empty());
+        assert!(config.launch_args.is_empty());
+        assert!(!config.force_windows);
+        assert!(matches!(config.launch_mode, LaunchMode::Native));
+    }
+
+    #[test]
+    fn path_helpers_are_relative_to_working_dir() {
+        let working_dir = std::env::temp_dir().join("gsm-instance-config-tests");
+        let config = InstanceConfig {
+            working_dir: working_dir.clone(),
+            ..InstanceConfig::default()
+        };
+
+        assert_eq!(config.pid_file(), working_dir.join("instance.pid"));
+        assert_eq!(config.log_dir(), working_dir.join("logs"));
+        assert_eq!(config.stdout(), working_dir.join("logs").join("server.log"));
+        assert_eq!(config.stderr(), working_dir.join("logs").join("server.err"));
+    }
+
+    #[test]
+    fn serde_round_trip_preserves_non_default_fields() {
+        let config = InstanceConfig {
+            app_id: 2278520,
+            name: String::from("Test Server"),
+            command: String::from("./server"),
+            install_args: vec![String::from("+beta"), String::from("staging")],
+            launch_args: vec![String::from("-log"), String::from("-port=27015")],
+            force_windows: true,
+            working_dir: std::path::PathBuf::from("/srv/server"),
+            launch_mode: LaunchMode::Proton,
+        };
+
+        let serialized = serde_json::to_string(&config).expect("serialize config");
+        let deserialized: InstanceConfig =
+            serde_json::from_str(&serialized).expect("deserialize config");
+
+        assert_eq!(deserialized.app_id, 2278520);
+        assert_eq!(deserialized.name, "Test Server");
+        assert_eq!(deserialized.command, "./server");
+        assert_eq!(deserialized.install_args, vec!["+beta", "staging"]);
+        assert_eq!(deserialized.launch_args, vec!["-log", "-port=27015"]);
+        assert!(deserialized.force_windows);
+        assert_eq!(
+            deserialized.working_dir,
+            std::path::PathBuf::from("/srv/server")
+        );
+        assert!(matches!(deserialized.launch_mode, LaunchMode::Proton));
     }
 }

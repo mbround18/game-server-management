@@ -9,89 +9,52 @@ on:
       - main
     paths-ignore:
       - README.md
+    tags:
+      - "v*"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
+    github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  collect-apps:
-    runs-on: ubuntu-latest
-    outputs:
-      app_matrix: ${{ steps.set-app-matrix.outputs.app_matrix }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install jq
-        uses: mbround18/gh-reusable/actions/install-cli@main
-        with:
-          repository: "jqlang/jq"
-          asset: "jq-linux-amd64"
-          override-name: "jq"
-
-      - name: Extract package names and create matrix
-        id: set-app-matrix
-        run: |
-          # Extract package names from Cargo.toml files
-          app_names=$(find ./apps -name "Cargo.toml" -type f | xargs -I{} grep -l "^\[package\]" {} | xargs -I{} bash -c 'grep -m1 "^name" {} | sed -E "s/name[[:space:]]*=[[:space:]]*\"([^\"]*)\"/\1/"')
-
-          # Use jq to create the JSON array of objects with 'name' property
-          app_matrix=$(echo "$app_names" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0)) | map({"app_name": .})')
-
-          echo "app_matrix<<EOF" >> $GITHUB_OUTPUT
-          echo "${app_matrix}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT       
-
-          echo "Generated matrix: ${app_matrix}"
-
   rust:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
-  release:
+  docker-compose:
     needs:
-      - collect-apps
       - rust
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
-    uses: mbround18/gh-reusable/.github/workflows/docker-release.yaml@main
-    with:
-      image: mbround18/gsm-reference
-      target: gh-runtime
-      # app_name plus dash for the version.
-      semver_prefix: ${{ matrix.app_name }}-
-      download_artifact: rust-release
-      download_artifact_destination: dist
-    secrets:
-      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-
-  tagger:
-    if: ${{ github.ref_name == 'main' }}
-    needs:
-      - collect-apps
-      - release
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.collect-apps.outputs.app_matrix) }}
     runs-on: ubuntu-latest
+    if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          token: "${{ secrets.GH_TOKEN }}"
-          fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
 
-      - uses: mbround18/gh-reusable/actions/semver@main
-        id: semver
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          prefix: ${{ matrix.app_name }}-
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Create tag
-        id: create-tag
+      - name: Set VERSION from tag or use latest
         run: |
-          git config --local user.name "GitHub Action"
-          git config --local user.email "actions@no-reply.github.com"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="latest"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-          echo "Creating tag for ${{ matrix.app_name }}"
-          git tag -a "${{ steps.semver.outputs.new_version }}" -m "Release ${{ steps.semver.outputs.new_version }}"
-          git push origin "${{ steps.semver.outputs.new_version }}"
+      - name: Build images from compose
+        run: |
+          docker compose -f compose.yml build
+        env:
+          VERSION: ${{ env.VERSION }}
+
+      - name: Push images to registry
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          docker compose -f compose.yml push
+        env:
+          VERSION: ${{ env.VERSION }}
