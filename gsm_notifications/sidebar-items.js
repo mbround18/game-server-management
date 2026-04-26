@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["NotificationError"],"fn":["send_notification"],"mod":["notifications"],"struct":["DiscordDispatcher","GenericDispatcher","NotificationPayload"],"trait":["NotificationDispatcher"]};

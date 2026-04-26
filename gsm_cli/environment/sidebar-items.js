@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["app_id","executable","first_non_empty","force_windows","install_args","install_path","launch_args","launch_mode","name","parse_launch_mode","split_shell_like_values"]};

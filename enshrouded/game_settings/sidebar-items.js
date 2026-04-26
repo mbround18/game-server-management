@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["load_or_create_config"],"macro":["env_field_mapping"],"struct":["GameSettings","ServerConfig","UserGroup"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Preset"],"fn":["load_or_create_config","save_config"],"struct":["GameSettings","Settings"]};

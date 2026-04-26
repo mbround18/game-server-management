@@ -1,0 +1,2 @@
+window.ALL_CRATES = ["enshrouded","env_parse","env_parser","gsm_backup","gsm_cli","gsm_cron","gsm_docs","gsm_instance","gsm_mod_manager","gsm_monitor","gsm_notifications","gsm_serde","gsm_shared","ini_derive","palworld"];
+//{"start":21,"fragment_lengths":[12,12,13,13,10,11,11,15,18,14,20,12,13,13,11]}

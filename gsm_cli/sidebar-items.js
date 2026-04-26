@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Commands"],"fn":["main","unwrap_or_exit"],"mod":["environment"],"struct":["Cli","InstallCommand","MonitorCommand","ResolvedOptions","RuntimeCommand","SharedOptions","UpdateCommand"]};

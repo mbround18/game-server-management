@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProtonError","ReleaseError","VersionError"],"fn":["download_proton","fetch_latest_release","fetch_specific_release","find_proton","init_proton_env","list_available_releases","parse_version","setup_prefix"],"struct":["ProtonConfig","ProtonRelease","ProtonVersion"]};

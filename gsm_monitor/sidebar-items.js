@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["start_instance_log_monitor","start_monitor_in_thread"],"struct":["LogRule","LogRules","Monitor"]};

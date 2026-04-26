@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["config","errors","install","launcher","proton","shutdown","startup","steamcmd","update"],"struct":["Instance"]};

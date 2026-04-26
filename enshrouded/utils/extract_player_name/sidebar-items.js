@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_player_joined_name","extract_player_left_name"]};

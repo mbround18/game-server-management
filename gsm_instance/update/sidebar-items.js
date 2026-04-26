@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["update_is_available","update_server"],"struct":["UpdateInfo"]};
