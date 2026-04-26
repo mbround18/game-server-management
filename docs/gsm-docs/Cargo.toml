@@ -1,0 +1,8 @@
+[package]
+name = "gsm-docs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "gsm_docs"
+path = "src/lib.rs"

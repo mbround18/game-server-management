@@ -929,6 +929,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "gsm-docs"
+version = "0.1.0"
+
+[[package]]
 name = "gsm-instance"
 version = "0.1.0"
 dependencies = [

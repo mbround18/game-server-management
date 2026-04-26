@@ -1,6 +1,7 @@
 [workspace]
-members = ["libs/*", "apps/*", "tools/*"]
+members = ["libs/*", "apps/*", "tools/*", "docs/gsm-docs"]
 resolver = "3"
+
 
 
 [profile.release]

@@ -10,7 +10,8 @@
 //! use gsm_instance::shutdown::blocking_shutdown;
 //!
 //! // Gracefully shut down the server.
-//! blocking_shutdown("test.exe");
+//! // Replace "my_game_server.exe" with the actual executable name.
+//! blocking_shutdown("my_game_server.exe");
 //! ```
 
 use std::{thread, time::Duration};
@@ -20,11 +21,31 @@ use crate::process::ServerProcess;
 
 /// Sends an interrupt signal to all running server processes and waits until they terminate.
 ///
-/// This function:
-/// 1. Creates a new `ServerProcess` instance.
-/// 2. Sends an interrupt signal to all processes whose executable contains `SERVER_EXECUTABLE`.
-/// 3. Waits 5 seconds for the processes to begin shutting down.
-/// 4. Continuously checks every 5 seconds until no matching processes are running.
+/// This function is designed to perform a graceful shutdown of all processes associated
+/// with a game server instance. It identifies running processes by checking their executable
+/// path against a provided string.
+///
+/// # Arguments
+///
+/// * `executable`: A string slice representing a unique part of the server executable's
+///   path or name. This is used to identify the target processes to shut down.
+///
+/// # Behavior
+///
+/// 1. A `ServerProcess` instance is created to manage process operations.
+/// 2. An interrupt signal (e.g., SIGINT on Unix-like systems) is sent to all processes
+///    whose executable path or name contains the `executable` string.
+/// 3. The function then waits for a short period (5 seconds) to allow processes to begin
+///    their shutdown sequence.
+/// 4. It enters a loop, periodically checking (every 5 seconds) if any matching server
+///    processes are still running.
+/// 5. The loop continues until no matching processes are found, at which point the function
+///    concludes that the server has been successfully stopped.
+///
+/// # Panics
+///
+/// This function does not explicitly panic, but underlying `ServerProcess` operations
+/// might in extreme cases of system resource exhaustion.
 pub fn blocking_shutdown(executable: &str) {
     let mut server_process = ServerProcess::new();
     info!("Sending interrupt signal to server processes...");

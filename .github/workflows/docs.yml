@@ -1,0 +1,68 @@
+name: Docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**"
+      - "libs/**"
+      - "docs/**"
+      - "Cargo.toml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate a token
+        id: generate_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # 3beb63f, https://github.com/tibdex/github-app-token/releases/latest
+        with:
+          app_id: ${{ vars.APP_CLIENT_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # e97e2d8, https://github.com/dtolnay/rust-toolchain/releases/latest
+        with:
+          toolchain: stable
+
+      - name: Cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # 27d5ce7, https://github.com/actions/cache/releases/latest
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build Docs
+        run: cargo doc --workspace --no-deps --all-features
+      - name: Create .nojekyll
+        run: touch target/doc/.nojekyll
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # fc324d3, https://github.com/actions/upload-pages-artifact/releases/latest
+        with:
+          path: target/doc
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # cd2ce8f, https://github.com/actions/deploy-pages/releases/latest
