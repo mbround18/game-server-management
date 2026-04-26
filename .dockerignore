@@ -5,3 +5,4 @@ target/
 tmp/
 variables.json
 renovate.json
+data

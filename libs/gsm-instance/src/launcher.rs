@@ -5,6 +5,7 @@ use crate::proton;
 use crate::proton::ProtonConfig;
 use std::env;
 use std::fs::File;
+use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tracing::{debug, error};
@@ -242,23 +243,31 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
     debug!("Setting working directory: {:?}", config.working_dir);
     command.current_dir(&config.working_dir);
 
-    debug!("Creating log file at: {:?}", config.stdout());
-    let log_file = match File::create(config.stdout()) {
+    if let Err(e) = create_dir_all(config.log_dir()) {
+        error!("Failed to create log directory: {}", e);
+        return Err(InstanceError::IoError(e));
+    }
+
+    debug!("Creating stdout log file at: {:?}", config.stdout());
+    let stdout_file = match File::create(config.stdout()) {
         Ok(file) => file,
         Err(e) => {
-            error!("Failed to create log file: {}", e);
+            error!("Failed to create stdout log file: {}", e);
             return Err(InstanceError::IoError(e));
         }
     };
 
-    command.stdout(Stdio::from(match log_file.try_clone() {
+    debug!("Creating stderr log file at: {:?}", config.stderr());
+    let stderr_file = match File::create(config.stderr()) {
         Ok(file) => file,
         Err(e) => {
-            error!("Failed to clone log file handle: {}", e);
+            error!("Failed to create stderr log file: {}", e);
             return Err(InstanceError::IoError(e));
         }
-    }));
-    command.stderr(Stdio::from(log_file));
+    };
+
+    command.stdout(Stdio::from(stdout_file));
+    command.stderr(Stdio::from(stderr_file));
 
     debug!("Final command: {:?}", command);
 
@@ -322,6 +331,16 @@ mod tests {
         let mut child = command.spawn().expect("Failed to spawn child process");
         let status = child.wait().expect("Failed to wait on child process");
         assert!(status.success());
+    }
+
+    #[test]
+    fn launch_server_creates_expected_log_files() {
+        let config = test_config(LaunchMode::Native);
+
+        let command_result = launch_server(&config);
+        assert!(command_result.is_ok());
+        assert!(config.stdout().exists());
+        assert!(config.stderr().exists());
     }
 
     #[test]

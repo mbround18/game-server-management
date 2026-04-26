@@ -68,6 +68,7 @@ impl ProtonConfig {
 /// Find an installed Proton version based on version pattern
 pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
+    let proton_dir = env::var("PROTON_DIR").unwrap_or_else(|_| format!("{home}/proton"));
 
     // Try glob search in common compatibility tools directories first
     let glob_patterns = [
@@ -80,6 +81,8 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
         format!("{}/.steam/root/compatibilitytools.d/*Proton*/proton", home),
         format!("{}/.steam/steam/compatibilitytools.d/*Proton*/proton", home),
         format!("{}/.steam/compatibilitytools.d/*Proton*/proton", home),
+        format!("{}/GE-Proton*/proton", proton_dir),
+        format!("{}/*Proton*/proton", proton_dir),
     ];
 
     // If version is specified, try to find a specific version first
@@ -123,13 +126,13 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     }
 
     // If glob search failed, try specific paths
-    let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
     let fallback_paths = [
         "/usr/bin/proton".to_string(),
         format!("{}/.local/share/Steam/steamapps/common/Proton/proton", home),
         "/usr/local/bin/proton".to_string(),
         format!("{}/Proton/proton", home),
         format!("{}/proton/proton", home),
+        format!("{}/proton", proton_dir),
     ];
 
     debug!("Glob search failed, trying specific paths");
