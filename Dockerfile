@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.23
+# syntax=docker/dockerfile:1.24
 
 # Define versions globally
 ARG RUST_VERSION=1.95
