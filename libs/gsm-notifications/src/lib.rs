@@ -3,6 +3,7 @@
 //! A generic notifications library that dispatches notifications to a webhook URL.
 //! If the URL matches a Discord webhook pattern, it sends a Discord embed payload;
 //! otherwise, it sends a generic JSON payload.
+#![warn(missing_docs)]
 //!
 //! ## Usage
 //!
@@ -19,6 +20,9 @@
 //! # Ok::<(), NotificationError>(())
 //! ```
 
+/// Helpers for sending notifications based on standard server lifecycle events.
+///
+/// See [`notifications::send_notifications`] for the main entry point.
 pub mod notifications;
 
 use reqwest::blocking::Client;
@@ -29,9 +33,13 @@ use std::fmt;
 /// Custom error type for notifications.
 #[derive(Debug)]
 pub enum NotificationError {
+    /// The HTTP request to the webhook endpoint failed.
     HttpError(reqwest::Error),
+    /// The supplied webhook URL was empty or could not be parsed.
     InvalidWebhookUrl(String),
+    /// The notification payload could not be serialized to JSON.
     SerializationError(serde_json::Error),
+    /// No registered dispatcher matched the given webhook URL.
     DispatcherNotFound(String),
 }
 
@@ -65,8 +73,11 @@ impl From<serde_json::Error> for NotificationError {
 /// Generic payload for non–Discord notifications.
 #[derive(Serialize)]
 pub struct NotificationPayload<T: Serialize> {
+    /// The notification category label (e.g. `"INFO"`, `"ALERT"`).
     pub notification_type: String,
+    /// The human-readable notification message.
     pub message: String,
+    /// Optional extra data attached to the notification.
     pub data: Option<T>,
 }
 
@@ -115,6 +126,11 @@ fn get_discord_color(notification_type: &str) -> i32 {
 /// Object–safe trait for dispatching notifications. The method takes extra data
 /// as an already–serialized JSON value.
 pub trait NotificationDispatcher: Send + Sync {
+    /// Sends a notification payload to `webhook_url`.
+    ///
+    /// Implementors are responsible for formatting and delivering the payload in
+    /// whatever way is appropriate for the target platform (e.g. Discord embed vs.
+    /// generic JSON).
     fn send_payload(
         &self,
         webhook_url: &str,

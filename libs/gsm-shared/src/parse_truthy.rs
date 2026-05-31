@@ -1,5 +1,18 @@
 use std::fmt::Error;
 
+/// Parses a string value into a boolean.
+///
+/// Recognises the following case-insensitive values:
+///
+/// | Input | Result |
+/// |-------|--------|
+/// | `"true"` / `"1"` | `Ok(true)` |
+/// | `"false"` / `"0"` / anything else | `Ok(false)` |
+///
+/// # Errors
+///
+/// This function currently always returns `Ok`. The `Result` return type is kept for
+/// forward-compatibility.
 pub fn parse_truthy(value: &str) -> Result<bool, Error> {
     Ok(match value.to_lowercase().as_str() {
         "true" => true,

@@ -16,6 +16,11 @@ use tracing::{debug, error};
 use walkdir::WalkDir;
 use zip::ZipArchive;
 
+/// Represents a mod that can be downloaded and installed into a game server.
+///
+/// Construct a `ManagedMod` directly with [`ManagedMod::new`] when you have a full
+/// download URL, or use [`TryFrom<String>`] to accept either a URL *or* a Thunderstore
+/// package string (`"Author-ModName-Version"`).
 pub struct ManagedMod {
     pub(crate) url: String,
     pub(crate) file_type: String,
@@ -27,6 +32,11 @@ pub struct ManagedMod {
 }
 
 impl ManagedMod {
+    /// Creates a new [`ManagedMod`] for the given `url`.
+    ///
+    /// The staging directory is set to `<game_directory>/mods_staging`.  The mod
+    /// is not downloaded or installed until [`ManagedMod::download`] and
+    /// [`ManagedMod::install`] are called.
     pub fn new(url: &str, game_directory: PathBuf, plugin_directory: PathBuf) -> Self {
         let file_type = url_parse_file_type(url);
         ManagedMod {
@@ -52,6 +62,15 @@ impl ManagedMod {
         false
     }
 
+    /// Downloads the mod archive to the staging directory.
+    ///
+    /// If the URL redirects to a different location (e.g. a CDN redirect), the
+    /// internal URL and detected file type are updated accordingly.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ModError`] if the staging directory cannot be created, the URL is
+    /// invalid, the download fails, or the file cannot be written to disk.
     pub fn download(&mut self) -> Result<(), ModError> {
         debug!("Initializing mod download...");
         if !self.staging_location.exists() {
@@ -86,6 +105,16 @@ impl ManagedMod {
         Ok(())
     }
 
+    /// Extracts and installs the previously downloaded mod archive.
+    ///
+    /// BepInEx mods (detected by `winhttp.dll` or a `BepInEx` directory in the
+    /// archive) are installed into `game_directory`; all other mods go into
+    /// `plugin_directory`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ModError`] if the staging location is not a valid file, the archive
+    /// cannot be opened or extracted, or the files cannot be moved to their destination.
     pub fn install(&mut self) -> Result<(), ModError> {
         if self.staging_location.is_dir() {
             error!("Invalid install path: {:?}", self.staging_location);

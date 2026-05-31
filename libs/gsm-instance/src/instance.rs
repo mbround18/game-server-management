@@ -12,6 +12,7 @@ use std::process::Child; // Using synchronous std process Child
 /// methods to install, update, start, stop, and restart the server.
 #[derive(Clone, Debug)]
 pub struct Instance {
+    /// The configuration that controls this server instance.
     pub config: InstanceConfig,
 }
 
@@ -21,6 +22,12 @@ impl Instance {
         Self { config }
     }
 
+    /// Reads the PID of the running server process from the PID file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`InstanceError`] if the PID file does not exist, cannot be read,
+    /// or its contents cannot be parsed as a `u32`.
     pub fn pid(&self) -> Result<u32, InstanceError> {
         let pid_file = self.config.pid_file();
         if pid_file.exists() {

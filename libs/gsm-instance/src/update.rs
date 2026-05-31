@@ -36,7 +36,9 @@ use tracing::{debug, info};
 /// Struct holding build ID information.
 #[derive(Debug, PartialEq, Eq)]
 pub struct UpdateInfo {
+    /// The build ID currently installed on disk (from the Steam manifest file).
     pub current_build_id: String,
+    /// The latest available build ID (from the Steam app-info file).
     pub latest_build_id: String,
 }
 

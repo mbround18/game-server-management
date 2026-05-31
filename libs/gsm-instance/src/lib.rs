@@ -3,6 +3,7 @@
 //! The **gsm-instance** crate provides functionality to install, update, start, stop, and restart
 //! a game server instance using SteamCMD. It offers a flexible configuration system and a CLI
 //! interface for managing the server instance.
+#![warn(missing_docs)]
 //!
 //! ## Modules
 //!

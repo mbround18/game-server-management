@@ -1,5 +1,8 @@
 use reqwest::Url;
 
+/// Returns `true` if `input` is a syntactically valid URL.
+///
+/// Uses [`reqwest::Url::parse`] to validate the input.
 pub fn is_valid_url(input: &str) -> bool {
     Url::parse(input).is_ok()
 }

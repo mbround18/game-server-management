@@ -8,6 +8,11 @@ struct IPResponse {
     ip: String,
 }
 
+/// Holds a resolved IP address and port for the game server.
+///
+/// Use [`fetch_public_address`] to obtain an `IPConfig` populated from
+/// either the `ADDRESS`/`PORT` environment variables or a public IP-lookup
+/// service.
 pub struct IPConfig {
     pub(crate) ip: String,
     pub(crate) port: u16,
@@ -36,6 +41,12 @@ impl IPConfig {
         env::var("PORT").map(|port| port.parse().unwrap())
     }
 
+    /// Returns an [`IPConfig`] built from the `ADDRESS` and `PORT` environment variables.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VarError`] when either variable is missing, empty, or `PORT` cannot
+    /// be parsed as a `u16`.
     pub fn to_string_from_env(&self) -> Result<IPConfig, VarError> {
         match self.get_ip_from_env() {
             Ok(ip) => match self.get_port_from_env() {
@@ -56,6 +67,12 @@ impl IPConfig {
         }
     }
 
+    /// Queries a series of public IP-lookup APIs using `client` and returns the first
+    /// successful IP address string.
+    ///
+    /// # Errors
+    ///
+    /// Returns a boxed error if all API requests fail or all responses cannot be parsed.
     pub fn fetch_ip_from_api(&self, client: &Client) -> Result<String, Box<dyn std::error::Error>> {
         let urls = [
             "https://api.ipify.org?format=json",
@@ -86,7 +103,12 @@ impl IPConfig {
     }
 }
 
-// Standardized way of fetching public address.
+/// Resolves the public IP address and port for the game server.
+///
+/// Resolution order:
+/// 1. If `ADDRESS` and `PORT` environment variables are set and non-empty, they are used.
+/// 2. Otherwise, the function queries a series of public IP-lookup APIs
+///    (`ipify`, `seeip`, `ipinfo.io`) and falls back to `127.0.0.1:2456` if all fail.
 pub fn fetch_public_address() -> IPConfig {
     let client = Client::new();
     let mut ip_config = IPConfig::default();

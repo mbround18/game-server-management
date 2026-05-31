@@ -24,11 +24,22 @@ fn default_ranking(current_count: usize) -> i32 {
     current_count as i32 - DEFAULT_STOP_INT
 }
 
+/// A log-processing rule composed of a [`Matcher`] predicate and an [`Action`] handler.
+///
+/// When a new log line arrives the monitor evaluates each rule's `matcher`.  If it
+/// returns `true`, the associated `action` is invoked.  If `stop` is `true`, no
+/// further rules are evaluated for that line.
+///
+/// Rules are ordered by their `ranking` — lower values run first.
 #[derive(Clone)]
 pub struct LogRule {
+    /// Predicate that decides whether this rule applies to a given log line.
     pub matcher: Matcher,
+    /// Callback executed when `matcher` returns `true`.
     pub action: Action,
+    /// Sort key used to establish evaluation order across all rules.
     pub ranking: i32,
+    /// When `true`, stops further rule evaluation after this rule is applied.
     pub stop: bool,
 }
 
@@ -45,18 +56,26 @@ impl Default for LogRule {
 }
 
 impl LogRule {
+    /// Creates a new [`LogRule`] with default values (matches every line, logs at INFO level,
+    /// and stops further rule processing).
     pub fn new() -> Self {
         trace!("Creating new LogRule");
         Self::default()
     }
 }
 
+/// A thread-safe, cloneable collection of [`LogRule`]s.
+///
+/// `LogRules` wraps a `Vec<LogRule>` in an `Arc<RwLock<…>>`, so it can be cheaply
+/// cloned and shared between threads without copying the underlying rule data.
 #[derive(Clone)]
 pub struct LogRules {
     rules: Arc<RwLock<Vec<LogRule>>>,
 }
 
 impl LogRules {
+    /// Creates a new, empty [`LogRules`] collection initialised with the catch-all
+    /// default rule (logs every line at INFO level).
     pub fn new() -> Self {
         trace!("Initializing LogRules");
         Self {
@@ -64,6 +83,14 @@ impl LogRules {
         }
     }
 
+    /// Appends a new rule to the collection.
+    ///
+    /// # Parameters
+    ///
+    /// - `matcher` – predicate that decides whether the rule applies to a log line.
+    /// - `action` – callback executed when `matcher` returns `true`.
+    /// - `stop` – if `true`, no further rules are evaluated for the current line.
+    /// - `ranking` – explicit sort key; uses an auto-computed value when `None`.
     pub fn add_rule<F, G>(&self, matcher: F, action: G, stop: bool, ranking: Option<i32>)
     where
         F: Fn(&str) -> bool + Send + Sync + 'static,
@@ -79,6 +106,7 @@ impl LogRules {
         rules.push(rule);
     }
 
+    /// Returns a snapshot of all rules, sorted by `ranking` (ascending).
     pub fn get_rules(&self) -> Vec<LogRule> {
         trace!("Retrieving and sorting rules");
         let mut rules = self.rules.read().unwrap().clone();

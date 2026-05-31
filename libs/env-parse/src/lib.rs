@@ -3,6 +3,7 @@
 //! This crate provides a convenient macro for parsing environment variables into a specified type, with a fallback to a default value.
 //!
 //! The `env_parse!` macro simplifies the common pattern of reading an environment variable, parsing it, and using a default value if the variable is not set or parsing fails.
+#![warn(missing_docs)]
 extern crate proc_macro;
 
 /// Parses an environment variable into a specified type, falling back to a default value.

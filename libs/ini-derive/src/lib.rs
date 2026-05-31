@@ -1,3 +1,28 @@
+//! # ini-derive
+//!
+//! Procedural macro crate that provides `#[derive(IniSerialize)]` for use with
+//! `gsm-serde`.
+//!
+//! ## Usage
+//!
+//! Annotate a struct with `#[derive(IniSerialize)]` and supply the section header
+//! via `#[INIHeader(name = "...")]`:
+//!
+//! ```rust,ignore
+//! use ini_derive::IniSerialize;
+//! use gsm_serde::serde_ini::IniHeader;
+//!
+//! #[derive(serde::Serialize, IniSerialize)]
+//! #[INIHeader(name = "/Script/Pal.PalGameWorldSettings")]
+//! struct GameSettings {
+//!     difficulty: String,
+//! }
+//!
+//! assert_eq!(GameSettings::ini_header(), "/Script/Pal.PalGameWorldSettings");
+//! ```
+//!
+//! The derive macro implements [`gsm_serde::serde_ini::IniHeader`] for both the struct
+//! and a shared reference to it.
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -22,6 +47,14 @@ impl syn::parse::Parse for IniHeaderArgs {
     }
 }
 
+/// Derives [`gsm_serde::serde_ini::IniHeader`] for the annotated struct.
+///
+/// Requires the `#[INIHeader(name = "...")]` attribute on the struct to specify the
+/// INI section header string.
+///
+/// # Panics
+///
+/// Panics at compile time if the `#[INIHeader(name = "...")]` attribute is absent.
 #[proc_macro_derive(IniSerialize, attributes(INIHeader))]
 pub fn ini_serialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
