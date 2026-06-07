@@ -9,5 +9,5 @@ tracing = "0.1"
 tempfile = "3.27.0"
 walkdir = "2.5.0"
 reqwest = {version = "0", features = ["json", "default-tls", "blocking"]}
-cached = "0"
+cached = "2"
 md5 = "0.8"
