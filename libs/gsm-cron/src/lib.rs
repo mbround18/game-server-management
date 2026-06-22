@@ -5,6 +5,7 @@
 //!
 //! The crate uses the `cron` and `tokio` crates to provide a flexible and efficient scheduling mechanism.
 //! It supports standard cron expressions for scheduling jobs.
+#![warn(missing_docs)]
 mod cron_loop;
 
 use chrono::Utc;

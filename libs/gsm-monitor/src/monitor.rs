@@ -47,6 +47,12 @@ impl Monitor {
         }
     }
 
+    /// Runs `self` in the current thread, tailing `path` indefinitely.
+    ///
+    /// The function opens `path`, seeks to the end so that only *new* content is
+    /// processed, and then loops, reading new lines and evaluating each against the
+    /// registered [`LogRule`]s.  If the file is truncated or rotated, it is
+    /// automatically re-opened from the beginning.
     pub fn run(&self, path: PathBuf) {
         info!(target: INSTANCE_TARGET, "Starting watch on {}", path.display());
 
@@ -106,6 +112,10 @@ impl Monitor {
     }
 }
 
+/// Spawns a dedicated OS thread that tails `log_file` and processes each line
+/// using the supplied `rules`.
+///
+/// The thread is named `log-monitor-<path>` for easier debugging.
 pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
     info!(target: INSTANCE_TARGET,
         "Spawning new log monitor thread for file: {}",
@@ -126,6 +136,10 @@ pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
     }
 }
 
+/// Starts log monitors for both `server.log` and `server.err` inside `<working_dir>/logs/`.
+///
+/// Calls [`start_monitor_in_thread`] twice — once for each log file — sharing the same
+/// `rules` (the [`LogRules`] type is cheaply cloneable because it wraps an `Arc`).
 pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
     let log_dir = working_dir.join("logs");
     let server_log = log_dir.join("server.log");

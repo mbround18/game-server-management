@@ -22,6 +22,7 @@ use std::fmt::Write;
 /// assert_eq!(MySettings::ini_header(), "my_section");
 /// ```
 pub trait IniHeader {
+    /// Returns the INI section header string (e.g. `"/Script/Pal.PalGameWorldSettings"`).
     fn ini_header() -> &'static str;
 }
 

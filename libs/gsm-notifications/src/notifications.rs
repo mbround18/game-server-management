@@ -2,11 +2,17 @@ use crate::{NotificationError, send_notification};
 use gsm_shared::fetch_var;
 use tracing::debug;
 
+/// Represents standard server lifecycle events that can trigger notifications.
 pub enum StandardServerEvents {
+    /// A player with the given name joined the server.
     PlayerJoined(String),
+    /// A player with the given name left the server.
     PlayerLeft(String),
+    /// The server has started successfully.
     Started,
+    /// The server is in the process of shutting down.
     Stopping,
+    /// The server has fully stopped.
     Stopped,
 }
 

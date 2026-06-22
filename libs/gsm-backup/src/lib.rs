@@ -6,6 +6,7 @@
 //! The primary function, `backup`, takes an input directory and an output path, and creates a
 //! `.tar.gz` archive of the directory's contents. It includes features for skipping certain
 //! files, such as auto-backups, to avoid redundant data in the archives.
+#![warn(missing_docs)]
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use glob::glob;
@@ -21,14 +22,19 @@ use tracing::{debug, error, info};
 /// This enum represents the possible errors that can occur during the backup process.
 #[derive(Debug, Error)]
 pub enum BackupError {
+    /// The output backup file could not be created at the given path.
     #[error("Failed to create backup file at {0}")]
     CreateBackupError(String),
+    /// The glob pattern used to enumerate files in the input directory was invalid.
     #[error("Glob pattern error: {0}")]
     GlobPatternError(#[from] glob::PatternError),
+    /// An error occurred while iterating a glob entry.
     #[error("Error reading glob entry: {0}")]
     GlobEntryError(#[from] glob::GlobError),
+    /// An error occurred while building or finalising the tar archive.
     #[error("Tar archive error: {0}")]
     TarError(String),
+    /// A general I/O error occurred.
     #[error("I/O error: {0}")]
     IoError(#[from] IoError),
 }
