@@ -29,8 +29,8 @@ pub struct ManagedMod {
 impl ManagedMod {
     pub fn new(url: &str, game_directory: PathBuf, plugin_directory: PathBuf) -> Self {
         let file_type = url_parse_file_type(url);
-        ManagedMod {
-            url: url.to_string(),
+        Self {
+            url: url.to_owned(),
             file_type,
             staging_location: game_directory.join("mods_staging"),
             installed: false,
@@ -52,6 +52,12 @@ impl ManagedMod {
         false
     }
 
+    /// Downloads the configured mod archive into the staging location.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when URL parsing fails, network fetch fails, or staged file
+    /// creation/writes cannot be completed.
     pub fn download(&mut self) -> Result<(), ModError> {
         debug!("Initializing mod download...");
         if !self.staging_location.exists() {
@@ -69,9 +75,10 @@ impl ManagedMod {
             self.file_type = url_parse_file_type(response.url().as_ref());
         }
 
+        let final_url = Url::parse(&self.url).map_err(|_| ModError::InvalidUrl)?;
         let file_name = parse_file_name(
-            &Url::parse(&self.url).unwrap(),
-            &format!("{}.{}", get_md5_hash(&self.url), &self.file_type),
+            &final_url,
+            &format!("{}.{}", get_md5_hash(&self.url), self.file_type),
         );
         self.staging_location = self.staging_location.join(file_name);
         debug!("Downloading to: {:?}", self.staging_location);
@@ -86,6 +93,12 @@ impl ManagedMod {
         Ok(())
     }
 
+    /// Extracts and installs the staged mod archive into the target directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when staging content is invalid, zip extraction fails,
+    /// or file moves into destination directories fail.
     pub fn install(&mut self) -> Result<(), ModError> {
         if self.staging_location.is_dir() {
             error!("Invalid install path: {:?}", self.staging_location);
@@ -137,12 +150,12 @@ impl TryFrom<String> for ManagedMod {
 
     fn try_from(url: String) -> Result<Self, Self::Error> {
         if is_valid_url(&url) {
-            Ok(ManagedMod::new(&url, PathBuf::new(), PathBuf::new()))
+            Ok(Self::new(&url, PathBuf::new(), PathBuf::new()))
         } else if let Some((author, mod_name, version)) = parse_mod_string(&url) {
             let constructed_url = format!(
                 "https://gcdn.thunderstore.io/live/repository/packages/{author}-{mod_name}-{version}.zip"
             );
-            Ok(ManagedMod::new(
+            Ok(Self::new(
                 &constructed_url,
                 PathBuf::new(),
                 PathBuf::new(),
@@ -155,6 +168,8 @@ impl TryFrom<String> for ManagedMod {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use std::fs::{self, File};
     use std::io::Write;
@@ -195,8 +210,8 @@ mod tests {
 
         // Build the ManagedMod instance and override staging_location to our dummy ZIP.
         let mut mod_instance = ManagedMod {
-            url: "http://example.com/dummy.zip".to_string(),
-            file_type: "zip".to_string(),
+            url: "http://example.com/dummy.zip".to_owned(),
+            file_type: "zip".to_owned(),
             staging_location: staging_file,
             installed: false,
             downloaded: true,
@@ -232,8 +247,8 @@ mod tests {
 
         // Build the ManagedMod instance and override staging_location to our dummy ZIP.
         let mut mod_instance = ManagedMod {
-            url: "http://example.com/bepinex_dummy.zip".to_string(),
-            file_type: "zip".to_string(),
+            url: "http://example.com/bepinex_dummy.zip".to_owned(),
+            file_type: "zip".to_owned(),
             staging_location: staging_file,
             installed: false,
             downloaded: true,
@@ -257,13 +272,13 @@ mod tests {
 
     #[test]
     fn test_try_from_valid_url() {
-        let mod_instance = ManagedMod::try_from("http://example.com/mod.zip".to_string()).unwrap();
+        let mod_instance = ManagedMod::try_from("http://example.com/mod.zip".to_owned()).unwrap();
         assert_eq!(mod_instance.url, "http://example.com/mod.zip");
     }
 
     #[test]
     fn test_try_from_invalid_url() {
-        let result = ManagedMod::try_from("invalid_url".to_string());
+        let result = ManagedMod::try_from("invalid_url".to_owned());
         assert!(result.is_err());
     }
 }

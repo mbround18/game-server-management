@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn returns_default_when_var_is_missing() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::remove_var("ENV_PARSE_MISSING_VALUE");
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn parses_value_when_var_is_present() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::set_var("ENV_PARSE_NUMERIC_VALUE", "99");
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn falls_back_to_default_for_invalid_values() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::set_var("ENV_PARSE_INVALID_VALUE", "not-a-number");
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn supports_string_values() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::set_var("ENV_PARSE_STRING_VALUE", "server-name");

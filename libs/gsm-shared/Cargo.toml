@@ -9,5 +9,8 @@ tracing = "0.1"
 tempfile = "3.27.0"
 walkdir = "2.5.0"
 reqwest = {version = "0", features = ["json", "default-tls", "blocking"]}
-cached = "0"
+cached = { version = "2", features = ["proc_macro"] }
 md5 = "0.8"
+
+[lints]
+workspace = true

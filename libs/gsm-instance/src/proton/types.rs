@@ -17,7 +17,7 @@ pub struct ProtonVersion {
 }
 
 /// Represents a Proton release from the GloriousEggroll GitHub repository.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProtonRelease {
     /// The version tag of the release (e.g., "GE-Proton10-1").
     pub tag: String,
@@ -48,34 +48,40 @@ pub enum VersionError {
 /// # Arguments
 ///
 /// * `version_str`: The version string to parse.
+///
+/// # Errors
+///
+/// Returns `VersionError::ParseError` when the input does not match any recognized
+/// Proton version or path format.
 pub fn parse_version(version_str: &str) -> Result<String, VersionError> {
     // Handle GE-Proton special case
     if version_str.starts_with("GE-") {
-        return Ok(version_str.to_string());
+        return Ok(version_str.to_owned());
     }
 
     // Try to match version format like "10-1" to "GE-Proton10-1"
     if version_str.contains('-') {
-        return Ok(format!("GE-Proton{}", version_str));
+        return Ok(format!("GE-Proton{version_str}"));
     }
 
     // Simple version number like "10" to "GE-Proton10-1"
     if version_str.parse::<u32>().is_ok() {
-        return Ok(format!("GE-Proton{}-1", version_str));
+        return Ok(format!("GE-Proton{version_str}-1"));
     }
 
     // If it's a full path to proton, use it as is
     if version_str.ends_with("/proton") || version_str.contains("proton") {
-        return Ok(version_str.to_string());
+        return Ok(version_str.to_owned());
     }
 
     Err(VersionError::ParseError(format!(
-        "Unrecognized version format: {}",
-        version_str
+        "Unrecognized version format: {version_str}"
     )))
 }
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]

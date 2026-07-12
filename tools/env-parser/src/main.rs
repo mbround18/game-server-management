@@ -43,7 +43,7 @@ fn find_cargo_toml_files(dir: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     for entry in fs::read_dir(dir)? {
         let path = entry?.path();
         if path.is_dir() {
-            result.extend(find_cargo_toml_files(path.to_str().unwrap())?);
+            result.extend(find_cargo_toml_files(path.to_string_lossy().as_ref())?);
         } else if path.file_name().is_some_and(|f| f == "Cargo.toml") {
             result.push(path);
         }
@@ -62,7 +62,7 @@ fn process_cargo_toml(cargo_path: &Path, output_path: Option<&Path>) -> Result<(
     }
 
     let out_path =
-        output_path.map_or_else(|| project_dir.join("variables.json"), |p| p.to_path_buf());
+        output_path.map_or_else(|| project_dir.join("variables.json"), std::path::Path::to_path_buf);
     let json = serde_json::to_string_pretty(&env_vars)?;
     fs::write(&out_path, json)?;
     println!(
@@ -137,7 +137,10 @@ fn extract_env_vars_from_file(
     for (pattern, groups, extra_type) in patterns {
         let regex = Regex::new(pattern)?;
         for caps in regex.captures_iter(&content) {
-            let var_name = caps.get(1).unwrap().as_str().to_string();
+            let Some(var_name_cap) = caps.get(1) else {
+                continue;
+            };
+            let var_name = var_name_cap.as_str().to_owned();
             let entry = env_vars.entry(var_name.clone()).or_default();
 
             // groups => (0: entire match) (1: var_name) (field_idx, type_idx)
@@ -146,21 +149,25 @@ fn extract_env_vars_from_file(
                 if let Some(f_idx) = field_idx
                     && let Some(field_cap) = caps.get(f_idx)
                 {
-                    entry.field = Some(field_cap.as_str().to_string());
+                    entry.field = Some(field_cap.as_str().to_owned());
                 }
                 // If we have an index for the type, fill it
                 if let Some(t_idx) = type_idx
                     && let Some(var_type_cap) = caps.get(t_idx)
                 {
-                    entry.var_type = Some(var_type_cap.as_str().to_string());
+                    entry.var_type = Some(var_type_cap.as_str().to_owned());
                 }
                 // fetch_var default is group(2)
-                if pattern.contains("fetch_var") && caps.get(2).is_some() {
-                    entry.default = Some(caps.get(2).unwrap().as_str().to_string());
+                if pattern.contains("fetch_var")
+                    && let Some(default_cap) = caps.get(2)
+                {
+                    entry.default = Some(default_cap.as_str().to_owned());
                 }
                 // env_parse! default is group(2)
-                if pattern.contains("env_parse!") && caps.get(2).is_some() {
-                    entry.default = Some(caps.get(2).unwrap().as_str().trim().to_string());
+                if pattern.contains("env_parse!")
+                    && let Some(default_cap) = caps.get(2)
+                {
+                    entry.default = Some(default_cap.as_str().trim().to_owned());
                 }
             }
 
@@ -168,7 +175,7 @@ fn extract_env_vars_from_file(
             if let Some(hardcoded_type) = extra_type
                 && hardcoded_type == "bool"
             {
-                entry.var_type = Some("bool".to_string());
+                entry.var_type = Some("bool".to_owned());
             }
         }
     }

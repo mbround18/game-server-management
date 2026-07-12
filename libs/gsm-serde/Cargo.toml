@@ -5,5 +5,8 @@ edition = "2024"
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 ini-derive = {path = "../ini-derive"}
+
+[lints]
+workspace = true

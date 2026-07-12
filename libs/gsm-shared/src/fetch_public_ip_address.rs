@@ -20,34 +20,37 @@ impl fmt::Display for IPConfig {
 }
 
 impl IPConfig {
-    fn new(ip: String, port: u16) -> IPConfig {
-        IPConfig { ip, port }
+    const fn new(ip: String, port: u16) -> Self {
+        Self { ip, port }
     }
 
-    fn default() -> IPConfig {
-        IPConfig::new("127.0.0.1".to_string(), 2456)
+    fn default() -> Self {
+        Self::new("127.0.0.1".to_owned(), 2456)
     }
 
-    fn get_ip_from_env(&self) -> Result<String, VarError> {
+    fn get_ip_from_env() -> Result<String, VarError> {
         env::var("ADDRESS")
     }
 
-    fn get_port_from_env(&self) -> Result<u16, VarError> {
-        env::var("PORT").map(|port| port.parse().unwrap())
+    fn get_port_from_env() -> Result<u16, VarError> {
+        env::var("PORT").and_then(|port| port.parse().map_err(|_| VarError::NotPresent))
     }
 
-    pub fn to_string_from_env(&self) -> Result<IPConfig, VarError> {
-        match self.get_ip_from_env() {
-            Ok(ip) => match self.get_port_from_env() {
+    /// Builds an [`IPConfig`] from `ADDRESS` and `PORT` environment variables.
+    ///
+    /// # Errors
+    ///
+    /// Returns `VarError::NotPresent` when either variable is absent/invalid, or when
+    /// the resulting values are empty.
+    pub fn to_string_from_env(&self) -> Result<Self, VarError> {
+        match Self::get_ip_from_env() {
+            Ok(ip) => match Self::get_port_from_env() {
                 Ok(port) => {
                     if ip.is_empty() {
                         error!("IP address is empty");
                         Err(VarError::NotPresent)
-                    } else if port.to_string().is_empty() {
-                        error!("Port is empty");
-                        Err(VarError::NotPresent)
                     } else {
-                        Ok(IPConfig::new(ip, port))
+                        Ok(Self::new(ip, port))
                     }
                 }
                 Err(e) => Err(e),
@@ -56,6 +59,12 @@ impl IPConfig {
         }
     }
 
+    /// Fetches the public IP from known API endpoints.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when all configured endpoints fail to return a parseable
+    /// response.
     pub fn fetch_ip_from_api(&self, client: &Client) -> Result<String, Box<dyn std::error::Error>> {
         let urls = [
             "https://api.ipify.org?format=json",
@@ -66,15 +75,13 @@ impl IPConfig {
         for url in urls {
             match client.get(url).send() {
                 Ok(response) => match response.json::<IPResponse>() {
-                    Ok(json) => return Ok(json.ip.to_string()),
+                    Ok(json) => return Ok(json.ip),
                     Err(e) => {
                         debug!("Failed to parse JSON from {}: {}", url, e);
-                        continue;
                     }
                 },
                 Err(e) => {
                     debug!("Request to {} failed: {}", url, e);
-                    continue;
                 }
             }
         }
@@ -112,6 +119,8 @@ pub fn fetch_public_address() -> IPConfig {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use std::env;
 

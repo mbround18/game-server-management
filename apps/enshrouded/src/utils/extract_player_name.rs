@@ -15,9 +15,9 @@ use regex::Regex;
 pub fn extract_player_joined_name(log: &str) -> Option<String> {
     // This regex looks for the word "Player" followed by one or more spaces,
     // then a single quote, then captures one or more characters that are not a single quote.
-    let re = Regex::new(r"Player\s+'([^']+)'").unwrap();
+    let re = Regex::new(r"Player\s+'([^']+)'").expect("joined-player regex should compile");
     re.captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
 }
 
 /// Extracts the player name from a log line when a player leaves.
@@ -35,7 +35,8 @@ pub fn extract_player_joined_name(log: &str) -> Option<String> {
 pub fn extract_player_left_name(log: &str) -> Option<String> {
     // This regex looks for the phrase "Remove Player", followed by one or more spaces,
     // then a single quote, then captures one or more characters that are not a single quote.
-    let re = Regex::new(r"Remove Entity for Player\s+'([^']+)'").unwrap();
+    let re = Regex::new(r"Remove Entity for Player\s+'([^']+)'")
+        .expect("left-player regex should compile");
     re.captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
 }

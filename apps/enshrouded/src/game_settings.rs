@@ -91,9 +91,9 @@ impl Default for GameSettings {
             food_buff_duration_factor: 1.0,
             from_hunger_to_starving: 600_000_000_000,
             shroud_time_factor: 1.0,
-            tombstone_mode: "AddBackpackMaterials".to_string(),
+            tombstone_mode: "AddBackpackMaterials".to_owned(),
             enable_glider_turbulences: true,
-            weather_frequency: "Normal".to_string(),
+            weather_frequency: "Normal".to_owned(),
             mining_damage_factor: 1.0,
             plant_growth_speed_factor: 1.0,
             resource_drop_stack_amount_factor: 1.0,
@@ -103,8 +103,8 @@ impl Default for GameSettings {
             experience_combat_factor: 1.0,
             experience_mining_factor: 1.0,
             experience_exploration_quests_factor: 1.0,
-            random_spawner_amount: "Normal".to_string(),
-            aggro_pool_amount: "Normal".to_string(),
+            random_spawner_amount: "Normal".to_owned(),
+            aggro_pool_amount: "Normal".to_owned(),
             enemy_damage_factor: 1.0,
             enemy_health_factor: 1.0,
             enemy_stamina_factor: 1.0,
@@ -113,7 +113,7 @@ impl Default for GameSettings {
             boss_health_factor: 1.0,
             threat_bonus: 1.0,
             pacify_all_enemies: false,
-            taming_startle_repercussion: "LoseSomeProgress".to_string(),
+            taming_startle_repercussion: "LoseSomeProgress".to_owned(),
             day_time_duration: 1_800_000_000_000,
             night_time_duration: 720_000_000_000,
         }
@@ -213,8 +213,8 @@ pub struct UserGroup {
 impl Default for UserGroup {
     fn default() -> Self {
         Self {
-            name: "Guest".to_string(),
-            password: "GuestXXXXXXXX".to_string(),
+            name: "Guest".to_owned(),
+            password: "GuestXXXXXXXX".to_owned(),
             can_kick_ban: false,
             can_access_inventories: true,
             can_edit_base: true,
@@ -247,21 +247,21 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             name: name(),
-            save_directory: "./savegame".to_string(),
-            log_directory: "./logs".to_string(),
-            ip: "0.0.0.0".to_string(),
+            save_directory: "./savegame".to_owned(),
+            log_directory: "./logs".to_owned(),
+            ip: "0.0.0.0".to_owned(),
             game_port: 15636,
             query_port: 15637,
             slot_count: 16,
-            voice_chat_mode: "Proximity".to_string(),
+            voice_chat_mode: "Proximity".to_owned(),
             enable_voice_chat: false,
             enable_text_chat: false,
-            game_settings_preset: "Default".to_string(),
+            game_settings_preset: "Default".to_owned(),
             game_settings: GameSettings::default(),
             user_groups: vec![
                 UserGroup {
-                    name: "Admin".to_string(),
-                    password: "AdminXXXXXXXX".to_string(),
+                    name: "Admin".to_owned(),
+                    password: "AdminXXXXXXXX".to_owned(),
                     can_kick_ban: true,
                     can_access_inventories: true,
                     can_edit_base: true,
@@ -287,8 +287,16 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
     tracing::debug!("Config loaded, applying environment overrides");
     apply_env_overrides(&mut config);
 
-    let config_changed =
-        serde_json::to_string(&config).unwrap() != serde_json::to_string(&original_config).unwrap();
+    let config_changed = match (
+        serde_json::to_string(&config),
+        serde_json::to_string(&original_config),
+    ) {
+        (Ok(updated), Ok(original)) => updated != original,
+        (Err(err), _) | (_, Err(err)) => {
+            tracing::warn!("Unable to serialize config for change detection: {err}");
+            true
+        }
+    };
     tracing::debug!("Config changed after env overrides: {}", config_changed);
 
     if path.exists() && config_changed {
@@ -299,17 +307,20 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
 
         if let Some(parent) = path.parent() {
             let prefix = path.file_stem().unwrap_or_default().to_string_lossy();
-            let mut backups: Vec<_> = std::fs::read_dir(parent)
-                .unwrap_or_else(|_| std::fs::read_dir(".").unwrap())
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| {
-                    entry
-                        .file_name()
-                        .to_string_lossy()
-                        .starts_with(&format!("{prefix}.bak."))
-                        && entry.file_name().to_string_lossy().ends_with(".json")
-                })
-                .collect();
+            let mut backups: Vec<_> =
+                match std::fs::read_dir(parent).or_else(|_| std::fs::read_dir(".")) {
+                    Ok(entries) => entries
+                        .filter_map(std::result::Result::ok)
+                        .filter(|entry| {
+                            entry
+                                .file_name()
+                                .to_string_lossy()
+                                .starts_with(&format!("{prefix}.bak."))
+                                && entry.file_name().to_string_lossy().ends_with(".json")
+                        })
+                        .collect(),
+                    Err(_) => Vec::new(),
+                };
 
             if backups.len() > 5 {
                 backups.sort_by_key(|entry| {
@@ -334,6 +345,8 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+
     use super::*;
     use std::env;
     use std::fs;
@@ -362,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_default_settings() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let settings = GameSettings::default();
@@ -374,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_env_override_f32() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
@@ -389,7 +402,7 @@ mod tests {
 
     #[test]
     fn test_env_override_string() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
         unsafe {
             env::set_var("TOMBSTONE_MODE", "Nothing");
@@ -401,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_new_config_creation_with_env() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
@@ -432,14 +445,14 @@ mod tests {
     fn test_load_or_create_config_saves_only_on_new_file() {
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");
         let config_path = tmp_dir.path().join("existing_config.json");
 
         let original_config = ServerConfig {
-            name: "CustomName".to_string(),
+            name: "CustomName".to_owned(),
             game_port: 54321,
             ..Default::default()
         };
@@ -463,7 +476,7 @@ mod tests {
         use std::path::PathBuf;
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");

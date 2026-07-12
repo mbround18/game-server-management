@@ -6,3 +6,6 @@ edition = "2024"
 [lib]
 path = "src/lib.rs"
 proc-macro = false
+
+[lints]
+workspace = true

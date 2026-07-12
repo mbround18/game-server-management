@@ -11,7 +11,7 @@ impl error::Error for VariantNotFound {}
 
 impl Display for VariantNotFound {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "VariantNotFound: {}", &self.v)
+        write!(f, "VariantNotFound: {}", self.v)
     }
 }
 

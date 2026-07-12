@@ -46,7 +46,7 @@ fn first_non_empty<const N: usize>(keys: [&str; N]) -> Option<String> {
     keys.into_iter().find_map(|key| {
         env::var(key)
             .ok()
-            .map(|value| value.trim().to_string())
+            .map(|value| value.trim().to_owned())
             .filter(|value| !value.is_empty())
     })
 }
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn install_args_reads_split_env_values() {
-        let _lock = env_lock().lock().unwrap_or_else(|error| error.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("INSTALL_ARGS", "+beta staging");

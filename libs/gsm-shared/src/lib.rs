@@ -21,10 +21,9 @@ pub use environment::*;
 mod constants;
 
 pub fn get_working_dir() -> String {
-    environment::fetch_var(
-        constants::WORKING_DIR,
-        env::current_dir().unwrap().to_str().unwrap(),
-    )
+    let default_working_dir = env::current_dir()
+        .ok().map_or_else(|| String::from("."), |path| path.to_string_lossy().into_owned());
+    environment::fetch_var(constants::WORKING_DIR, default_working_dir.as_str())
 }
 
 pub fn path_exists(path: &str) -> bool {
@@ -38,12 +37,10 @@ pub fn path_exists(path: &str) -> bool {
 }
 
 pub fn parse_file_name(url: &Url, default: &str) -> String {
-    String::from(
-        url.path_segments()
-            .and_then(|mut segments| segments.next_back())
-            .and_then(|name| if name.is_empty() { None } else { Some(name) })
-            .unwrap_or(default),
-    )
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|name| !name.is_empty())
+        .map_or_else(|| default.to_owned(), std::borrow::ToOwned::to_owned)
 }
 
 pub fn get_md5_hash(context: &str) -> String {
@@ -51,7 +48,10 @@ pub fn get_md5_hash(context: &str) -> String {
 }
 
 pub fn url_parse_file_type(url: &str) -> String {
-    url.split('.').next_back().unwrap().to_string()
+    url.rsplit('.')
+        .next()
+        .filter(|part| !part.is_empty())
+        .map_or_else(String::new, std::borrow::ToOwned::to_owned)
 }
 
 #[cfg(test)]

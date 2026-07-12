@@ -18,11 +18,11 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
                 match field_name.to_lowercase().as_str() {
                     "password" => group.password = value,
                     "can_kick_ban" => {
-                        group.can_kick_ban = value.parse().unwrap_or(group.can_kick_ban)
+                        group.can_kick_ban = value.parse().unwrap_or(group.can_kick_ban);
                     }
                     "can_access_inventories" => {
                         group.can_access_inventories =
-                            value.parse().unwrap_or(group.can_access_inventories)
+                            value.parse().unwrap_or(group.can_access_inventories);
                     }
                     _ => {}
                 }
@@ -33,6 +33,8 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use crate::game_settings::{ServerConfig, UserGroup};
     use std::sync::Mutex;
@@ -43,8 +45,8 @@ mod tests {
     fn make_config_with_group(name: &str) -> ServerConfig {
         ServerConfig {
             user_groups: vec![UserGroup {
-                name: name.to_string(),
-                password: "oldpass".to_string(),
+                name: name.to_owned(),
+                password: "oldpass".to_owned(),
                 can_kick_ban: false,
                 can_access_inventories: false,
                 can_edit_base: false,

@@ -11,13 +11,13 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 /// Validates that the source directory exists.
 fn validate_source_dir(src_dir: &Path) -> std::io::Result<()> {
-    if !src_dir.is_dir() {
+    if src_dir.is_dir() {
+        Ok(())
+    } else {
         Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Source directory {src_dir:?} does not exist"),
+            format!("Source directory {} does not exist", src_dir.display()),
         ))
-    } else {
-        Ok(())
     }
 }
 
@@ -67,9 +67,9 @@ fn move_normalized_back(temp_root: &Path, src_dir: &Path) -> std::io::Result<()>
     Ok(())
 }
 
-/// Normalizes the paths within `src_dir` by moving its contents to a temporary location,
-/// normalizing each relative path (replacing backslashes with forward slashes),
-/// and then moving the normalized contents back into a fresh `src_dir`.
+/// Normalizes paths in `src_dir` by moving its contents to a temporary location,
+/// rewriting each relative path to use forward slashes, and moving the normalized
+/// contents back into a fresh `src_dir`.
 ///
 /// # Errors
 ///

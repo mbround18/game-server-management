@@ -117,6 +117,8 @@ impl InstanceConfig {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used, clippy::unreadable_literal)]
+
     use super::{InstanceConfig, LaunchMode};
 
     #[test]
@@ -149,7 +151,7 @@ mod tests {
     #[test]
     fn serde_round_trip_preserves_non_default_fields() {
         let config = InstanceConfig {
-            app_id: 2278520,
+            app_id: 2_278_520,
             name: String::from("Test Server"),
             command: String::from("./server"),
             install_args: vec![String::from("+beta"), String::from("staging")],
@@ -163,7 +165,7 @@ mod tests {
         let deserialized: InstanceConfig =
             serde_json::from_str(&serialized).expect("deserialize config");
 
-        assert_eq!(deserialized.app_id, 2278520);
+        assert_eq!(deserialized.app_id, 2_278_520);
         assert_eq!(deserialized.name, "Test Server");
         assert_eq!(deserialized.command, "./server");
         assert_eq!(deserialized.install_args, vec!["+beta", "staging"]);

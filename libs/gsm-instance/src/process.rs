@@ -13,10 +13,7 @@ pub fn send_interrupt_to_pid(pid: u32) {
     let sys_pid = Pid::from(pid as usize);
     if let Some(process) = sys.process(sys_pid) {
         info!("Found process with PID: {}", pid);
-        match process.kill_with(Signal::Interrupt) {
-            Some(_) => info!("Sent interrupt signal to PID: {}", pid),
-            None => error!("Failed to send interrupt signal to PID: {}", pid),
-        }
+        if process.kill_with(Signal::Interrupt).is_some() { info!("Sent interrupt signal to PID: {}", pid) } else { error!("Failed to send interrupt signal to PID: {}", pid) }
     } else {
         debug!(
             "Process with PID {} not found (it may have already stopped)",
@@ -88,7 +85,11 @@ impl ServerProcess {
     pub fn send_interrupt(&mut self, executable_name: &str) {
         let processes = self.find_processes(executable_name);
         if processes.is_empty() {
-            panic!("Failed to find process with executable name: {executable_name}");
+            error!(
+                "Failed to find process with executable name: {}",
+                executable_name
+            );
+            return;
         }
 
         for process in processes {
@@ -109,6 +110,13 @@ impl Clone for ServerProcess {
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::unreadable_literal
+    )]
+
     use super::*;
     use std::process::{Child, Command};
     use std::thread;

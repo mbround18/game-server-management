@@ -1,4 +1,4 @@
-.PHONY: docs build lint test docker-build docker-push
+.PHONY: docs doc-audit build lint test docker-build docker-push
 
 GIT_TAG := $(shell git rev-parse --short HEAD)
 export COMPOSE_BAKE=true
@@ -23,3 +23,7 @@ docker-push: docker-build
 
 docs: lint
 	cargo run --bin env-parser -- ./apps
+
+doc-audit: lint
+	cargo test --doc --workspace
+	./scripts/public-api-report.sh
