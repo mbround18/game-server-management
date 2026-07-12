@@ -38,10 +38,10 @@ pub enum NotificationError {
 impl fmt::Display for NotificationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NotificationError::HttpError(err) => write!(f, "HTTP error: {err}"),
-            NotificationError::InvalidWebhookUrl(url) => write!(f, "Invalid webhook URL: {url}"),
-            NotificationError::SerializationError(err) => write!(f, "Serialization error: {err}"),
-            NotificationError::DispatcherNotFound(url) => {
+            Self::HttpError(err) => write!(f, "HTTP error: {err}"),
+            Self::InvalidWebhookUrl(url) => write!(f, "Invalid webhook URL: {url}"),
+            Self::SerializationError(err) => write!(f, "Serialization error: {err}"),
+            Self::DispatcherNotFound(url) => {
                 write!(f, "No dispatcher for webhook URL: {url}")
             }
         }
@@ -52,13 +52,13 @@ impl Error for NotificationError {}
 
 impl From<reqwest::Error> for NotificationError {
     fn from(err: reqwest::Error) -> Self {
-        NotificationError::HttpError(err)
+        Self::HttpError(err)
     }
 }
 
 impl From<serde_json::Error> for NotificationError {
     fn from(err: serde_json::Error) -> Self {
-        NotificationError::SerializationError(err)
+        Self::SerializationError(err)
     }
 }
 
@@ -74,7 +74,7 @@ pub struct NotificationPayload<T: Serialize> {
 fn validate_webhook_url(webhook_url: &str) -> Result<(), NotificationError> {
     if webhook_url.is_empty() || reqwest::Url::parse(webhook_url).is_err() {
         Err(NotificationError::InvalidWebhookUrl(
-            webhook_url.to_string(),
+            webhook_url.to_owned(),
         ))
     } else {
         Ok(())
@@ -115,6 +115,12 @@ fn get_discord_color(notification_type: &str) -> i32 {
 /// Object–safe trait for dispatching notifications. The method takes extra data
 /// as an already–serialized JSON value.
 pub trait NotificationDispatcher: Send + Sync {
+    /// Sends a payload through the dispatcher implementation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload cannot be delivered or the remote endpoint
+    /// responds with a failure status.
     fn send_payload(
         &self,
         webhook_url: &str,
@@ -136,8 +142,8 @@ impl NotificationDispatcher for GenericDispatcher {
         data: Option<serde_json::Value>,
     ) -> Result<(), NotificationError> {
         let payload = NotificationPayload {
-            notification_type: notification_type.to_string(),
-            message: message.to_string(),
+            notification_type: notification_type.to_owned(),
+            message: message.to_owned(),
             data,
         };
         let client = Client::new();
@@ -161,8 +167,8 @@ impl NotificationDispatcher for DiscordDispatcher {
         let payload = DiscordWebhookBody {
             content: format!("🔔 {notification_type}"),
             embeds: vec![DiscordEmbed {
-                title: notification_type.to_string(),
-                description: message.to_string(),
+                title: notification_type.to_owned(),
+                description: message.to_owned(),
                 color: get_discord_color(notification_type),
             }],
         };
@@ -233,6 +239,11 @@ fn default_registry() -> DispatcherRegistry {
 ///
 /// # Returns
 /// An Ok(()) on success, or a NotificationError.
+///
+/// # Errors
+///
+/// Returns an error when webhook URL validation fails, payload serialization fails,
+/// no dispatcher matches, or the remote request fails.
 pub fn send_notification<T: Serialize>(
     webhook_url: &str,
     notification_type: &str,
@@ -249,7 +260,7 @@ pub fn send_notification<T: Serialize>(
         dispatcher.send_payload(webhook_url, notification_type, message, data_value)
     } else {
         Err(NotificationError::DispatcherNotFound(
-            webhook_url.to_string(),
+            webhook_url.to_owned(),
         ))
     }
 }

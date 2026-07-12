@@ -47,6 +47,10 @@ const GITHUB_API_URL: &str =
 /// This function makes a request to the GitHub API to get a list of all releases
 /// for the `proton-ge-custom` repository. It then filters these releases to find
 /// the ones that have a `.tar.gz` asset, which is the format used for distribution.
+///
+/// # Errors
+///
+/// Returns an error when the GitHub API request fails or the response cannot be deserialized.
 pub fn list_available_releases() -> Result<Vec<ProtonRelease>, ReleaseError> {
     let releases: Vec<GitHubRelease> = reqwest::blocking::Client::new()
         .get(GITHUB_API_URL)
@@ -72,12 +76,16 @@ pub fn list_available_releases() -> Result<Vec<ProtonRelease>, ReleaseError> {
 }
 
 /// Fetches the latest available Proton GE release from GitHub.
+///
+/// # Errors
+///
+/// Returns an error when release metadata cannot be fetched or no release exists.
 pub fn fetch_latest_release() -> Result<ProtonRelease, ReleaseError> {
     let releases = list_available_releases()?;
     releases
         .into_iter()
         .next()
-        .ok_or_else(|| ReleaseError::NotFound("No releases found".to_string()))
+        .ok_or_else(|| ReleaseError::NotFound("No releases found".to_owned()))
 }
 
 /// Fetches a specific Proton GE release by its version tag.
@@ -85,10 +93,14 @@ pub fn fetch_latest_release() -> Result<ProtonRelease, ReleaseError> {
 /// # Arguments
 ///
 /// * `version`: The tag of the release to fetch (e.g., "GE-Proton8-25").
+///
+/// # Errors
+///
+/// Returns an error when release metadata cannot be fetched or no matching release exists.
 pub fn fetch_specific_release(version: &str) -> Result<ProtonRelease, ReleaseError> {
     let releases = list_available_releases()?;
     releases
         .into_iter()
         .find(|r| r.tag == version)
-        .ok_or_else(|| ReleaseError::NotFound(format!("Release {} not found", version)))
+        .ok_or_else(|| ReleaseError::NotFound(format!("Release {version} not found")))
 }

@@ -33,17 +33,17 @@ impl WindowsCompat {
     /// Creates a `Command` for the given game executable using the compatibility layer.
     fn create_command(&self, game_exe: &str) -> Option<Command> {
         match self {
-            WindowsCompat::Proton { config } => {
+            Self::Proton { config } => {
                 debug!("Creating Proton command for: {}", game_exe);
                 Some(config.create_command(game_exe))
             }
-            WindowsCompat::Wine { path } => {
+            Self::Wine { path } => {
                 debug!("Creating Wine command for: {}", game_exe);
                 let mut cmd = Command::new(path);
                 cmd.arg(game_exe);
                 Some(cmd)
             }
-            WindowsCompat::None => {
+            Self::None => {
                 debug!("No compatibility layer available for: {}", game_exe);
                 None
             }
@@ -62,13 +62,13 @@ fn try_find_proton(
             let version_desc = version_option.unwrap_or("any version");
             debug!("Found Proton {} at {}", version_desc, config.path);
             config.app_id = app_id.to_string();
-            setup_proton_config(config)
+            Ok(setup_proton_config(config))
         }
         Err(e) => {
-            let err_msg = match version_option {
-                Some(v) => format!("Failed to find or download Proton {}: {}", v, e),
-                None => format!("Proton not found: {}", e),
-            };
+            let err_msg = version_option.map_or_else(
+                || format!("Proton not found: {e}"),
+                |v| format!("Failed to find or download Proton {v}: {e}"),
+            );
 
             if version_option.is_some() {
                 error!("{}", err_msg);
@@ -79,16 +79,16 @@ fn try_find_proton(
             if force_proton {
                 Err(err_msg)
             } else {
-                Err(format!("Proton unavailable: {}", e))
+                Err(format!("Proton unavailable: {e}"))
             }
         }
     }
 }
 
 /// Sets up the Proton prefix and environment variables for a given `ProtonConfig`.
-fn setup_proton_config(mut config: ProtonConfig) -> Result<WindowsCompat, String> {
+fn setup_proton_config(mut config: ProtonConfig) -> WindowsCompat {
     if let Ok(home) = env::var("HOME") {
-        let prefix_path = format!("{}/.proton/prefixes/gsm", home);
+        let prefix_path = format!("{home}/.proton/prefixes/gsm");
         debug!("Setting up Proton prefix at: {}", prefix_path);
         if let Err(e) = proton::setup_prefix(&mut config, &prefix_path) {
             error!("Failed to set up Proton prefix: {}", e);
@@ -104,7 +104,7 @@ fn setup_proton_config(mut config: ProtonConfig) -> Result<WindowsCompat, String
         debug!("Successfully initialized Proton environment");
     }
 
-    Ok(WindowsCompat::Proton { config })
+    WindowsCompat::Proton { config }
 }
 
 /// Checks if a string value represents a truthy value.
@@ -120,10 +120,9 @@ fn find_windows_compatibility(
 ) -> Result<WindowsCompat, String> {
     debug!("Searching for Windows compatibility layers");
     let force_proton = env::var("FORCE_PROTON")
-        .map(|v| is_truthy(&v))
-        .unwrap_or(false);
+        .is_ok_and(|v| is_truthy(&v));
 
-    if let LaunchMode::Proton = launch_mode {
+    if matches!(launch_mode, LaunchMode::Proton) {
         // Check if PROTON_VERSION is set
         if let Ok(version) = env::var("PROTON_VERSION") {
             debug!("PROTON_VERSION is set to: {}", version);
@@ -149,17 +148,16 @@ fn find_windows_compatibility(
         }
     }
 
-    if let LaunchMode::Wine = launch_mode {
+    if matches!(launch_mode, LaunchMode::Wine) {
         if let Ok(wine_path) = find_wine() {
             debug!("Found Wine at: {}", wine_path);
             return Ok(WindowsCompat::Wine { path: wine_path });
-        } else {
-            debug!("Wine not found");
         }
+        debug!("Wine not found");
     }
 
     if force_proton {
-        return Err("FORCE_PROTON is set but no Proton installation was found".to_string());
+        return Err("FORCE_PROTON is set but no Proton installation was found".to_owned());
     }
 
     debug!("No Windows compatibility layer found");
@@ -172,18 +170,18 @@ fn find_wine() -> Result<String, String> {
     if let Ok(path) = which("wine64") {
         return path
             .to_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| "Failed to convert wine64 path to string.".to_string());
+            .map(std::borrow::ToOwned::to_owned)
+            .ok_or_else(|| "Failed to convert wine64 path to string.".to_owned());
     }
     // If 'wine64' is not found, attempt to find 'wine'
     if let Ok(path) = which("wine") {
         return path
             .to_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| "Failed to convert wine path to string.".to_string());
+            .map(std::borrow::ToOwned::to_owned)
+            .ok_or_else(|| "Failed to convert wine path to string.".to_owned());
     }
     // If neither is found, return an error
-    Err("Neither 'wine64' nor 'wine' was found in the system's PATH.".to_string())
+    Err("Neither 'wine64' nor 'wine' was found in the system's PATH.".to_owned())
 }
 
 /// Creates a `Command` for a Windows executable, using a compatibility layer if available.
@@ -198,11 +196,12 @@ fn get_command_for_windows(
     let compat = find_windows_compatibility(app_id, launch_mode).map_err(|e| {
         // Check if we need to exit immediately due to FORCE_PROTON
         if env::var("FORCE_PROTON")
-            .map(|v| is_truthy(&v))
-            .unwrap_or(false)
+            .is_ok_and(|v| is_truthy(&v))
         {
             error!("FORCE_PROTON set but Proton setup failed: {}", e);
-            std::process::exit(1);
+            return InstanceError::CommandExecutionError(format!(
+                "FORCE_PROTON set but Proton setup failed: {e}"
+            ));
         }
         error!("Failed to find Windows compatibility layer: {}", e);
         InstanceError::CommandExecutionError(e)
@@ -229,7 +228,7 @@ fn get_command_for_windows(
     let cmd = compat.create_command(exe_path).ok_or_else(|| {
         error!("Failed to create command for {}", exe_path);
         InstanceError::CommandExecutionError(
-            "No suitable Windows compatibility layer found.".to_string(),
+            "No suitable Windows compatibility layer found.".to_owned(),
         )
     })?;
 
@@ -261,6 +260,11 @@ fn get_command_for_windows(
 /// - It sets the working directory to `config.working_dir`.
 /// - It creates the log directory and redirects the command's `stdout` and `stderr` to
 ///   log files (`server.log` and `server.err`).
+///
+/// # Errors
+///
+/// Returns an error when compatibility command setup fails or when log files/directories
+/// cannot be created.
 pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> {
     debug!("Launching server with config: {:?}", config);
 
@@ -320,6 +324,13 @@ pub fn launch_server(config: &InstanceConfig) -> Result<Command, InstanceError> 
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::unreadable_literal
+    )]
+
     use super::*;
     use crate::config::InstanceConfig;
     use tempfile::tempdir;
@@ -327,12 +338,12 @@ mod tests {
     // On Unix systems, use "/bin/sleep" as a dummy command.
     #[cfg(unix)]
     fn dummy_command() -> String {
-        "/bin/sleep".to_string()
+        "/bin/sleep".to_owned()
     }
 
     #[cfg(unix)]
     fn dummy_arg() -> String {
-        "1".to_string()
+        "1".to_owned()
     }
 
     // On Windows, use "timeout" as a dummy command.
@@ -351,7 +362,7 @@ mod tests {
         let path = temp_dir.keep();
         InstanceConfig {
             app_id: 123456,
-            name: "TestServer".to_string(),
+            name: "TestServer".to_owned(),
             command: dummy_command(),
             install_args: vec![],
             launch_args: vec![dummy_arg()],

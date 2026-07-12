@@ -15,9 +15,10 @@ use regex::Regex;
 pub fn extract_player_joined_name(log: &str) -> Option<String> {
     // This regex looks for the timestamp, followed by "[LOG]", then captures the player name
     // before the phrase "joined the server".
-    let re = Regex::new(r"\[LOG\]\s+(\w+)\s+joined the server").unwrap();
+    let re = Regex::new(r"\[LOG\]\s+(\w+)\s+joined the server")
+        .expect("joined-player regex should compile");
     re.captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
 }
 
 /// Extracts the player name from a log line when a player leaves.
@@ -35,7 +36,8 @@ pub fn extract_player_joined_name(log: &str) -> Option<String> {
 pub fn extract_player_left_name(log: &str) -> Option<String> {
     // This regex looks for the timestamp, followed by "[LOG]", then captures the player name
     // before the phrase "left the server".
-    let re = Regex::new(r"\[LOG\]\s+(\w+)\s+left the server").unwrap();
+    let re =
+        Regex::new(r"\[LOG\]\s+(\w+)\s+left the server").expect("left-player regex should compile");
     re.captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
 }

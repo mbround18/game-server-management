@@ -87,6 +87,10 @@ pub enum BackupError {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Panics
+///
+/// Panics if internal glob pattern expansion fails while enumerating the input tree.
 pub fn backup<P, Q>(input: P, output: Q) -> Result<(), BackupError>
 where
     P: AsRef<Path>,
@@ -99,7 +103,10 @@ where
     if !input.exists() || !input.is_dir() {
         return Err(BackupError::IoError(IoError::new(
             ErrorKind::NotFound,
-            format!("Input directory {input:?} does not exist or is not a directory"),
+            format!(
+                "Input directory {} does not exist or is not a directory",
+                input.display()
+            ),
         )));
     }
 
@@ -108,18 +115,18 @@ where
 
     // Attempt to create the output backup file.
     let tar_gz = File::create(output)
-        .map_err(|_| BackupError::CreateBackupError(output.display().to_string()))?;
+        .map_err(|_| BackupError::CreateBackupError(format!("{}", output.display())))?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = Builder::new(enc);
 
     // Build a glob pattern for all files and directories under the input.
     let pattern = format!("{}/**/*", input.display());
-    let entries = glob(&pattern).expect("Failed to read glob pattern");
+    let entries = glob(&pattern).map_err(BackupError::GlobPatternError)?;
 
     for entry in entries {
         match entry {
             Ok(path) => {
-                let path_str = path.display().to_string();
+                let path_str = path.to_string_lossy().into_owned();
                 // Skip files whose names contain "backup_auto"
                 if path_str.contains("backup_auto") {
                     continue;
@@ -132,12 +139,11 @@ where
                 );
                 if let Err(err) = tar.append_path_with_name(&path, relative) {
                     error!("Failed to add {} to backup file", path_str);
-                    error!("{:?}", err);
+                    error!("Backup error: {err}");
                     let _ = remove_file(output);
                     return Err(BackupError::TarError(err.to_string()));
-                } else {
-                    debug!("Successfully added {} to backup file", path_str);
                 }
+                debug!("Successfully added {} to backup file", path_str);
             }
             Err(e) => error!("Error reading glob entry: {:?}", e),
         }
@@ -149,6 +155,13 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::unreadable_literal
+    )]
+
     use super::*;
     use std::fs;
     use std::path::Path;

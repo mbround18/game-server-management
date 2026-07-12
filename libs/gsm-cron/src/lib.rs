@@ -113,7 +113,7 @@ where
             "Schedule for job '{}' is already 6-field: {}",
             name_owned, schedule
         );
-        schedule.to_string()
+        schedule.to_owned()
     };
 
     info!(

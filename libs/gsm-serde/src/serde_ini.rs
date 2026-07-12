@@ -1,5 +1,4 @@
 use serde::{Serialize, de::DeserializeOwned};
-use std::fmt::Write;
 
 /// Trait for types that require a custom INI header.
 ///
@@ -33,9 +32,9 @@ fn format_number(n: &serde_json::Number) -> String {
         // Trim trailing zeros and possible trailing dot.
         let s = s.trim_end_matches('0').trim_end_matches('.');
         if s.is_empty() {
-            "0".to_string()
+            "0".to_owned()
         } else {
-            s.to_string()
+            s.to_owned()
         }
     } else {
         n.to_string()
@@ -164,12 +163,16 @@ fn serialize_value(value: &serde_json::Value, indent: usize) -> String {
 /// // NightTimeSpeedRate=0.8,
 /// // )
 /// ```
+///
+/// # Errors
+///
+/// Returns an error when `serde_json` conversion of `value` fails.
 pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_json::Error> {
     let mut output = String::new();
 
     // Write the header section.
     let section = T::ini_header();
-    writeln!(&mut output, "[{section}]").unwrap();
+    output.push_str(&format!("[{section}]\n"));
 
     // Convert the value into a serde_json::Value.
     let serialized = serde_json::to_value(value)?;
@@ -181,12 +184,12 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
             match val {
                 serde_json::Value::Object(_) => {
                     // For nested objects, use the recursive helper with indent level 1.
-                    writeln!(&mut output, "{key}=(").unwrap();
+                    output.push_str(&format!("{key}=(\n"));
                     output.push_str(&serialize_value(&val, 1));
-                    writeln!(&mut output, ")").unwrap();
+                    output.push_str(")\n");
                 }
                 _ => {
-                    writeln!(&mut output, "{}={},", key, format_json_value(&val)).unwrap();
+                    output.push_str(&format!("{}={},\n", key, format_json_value(&val)));
                 }
             }
         }
@@ -218,21 +221,21 @@ pub fn parse_ini_value(value: &str) -> serde_json::Value {
     if trimmed.starts_with('\"') && trimmed.ends_with('\"') && trimmed.len() >= 2 {
         // Remove the surrounding quotes.
         let inner = &trimmed[1..trimmed.len() - 1];
-        serde_json::Value::String(inner.to_string())
+        serde_json::Value::String(inner.to_owned())
     } else if let Ok(i) = trimmed.parse::<i64>() {
         serde_json::Value::Number(i.into())
     } else if let Ok(f) = trimmed.parse::<f64>() {
         if let Some(n) = serde_json::Number::from_f64(f) {
             serde_json::Value::Number(n)
         } else {
-            serde_json::Value::String(trimmed.to_string())
+            serde_json::Value::String(trimmed.to_owned())
         }
     } else if trimmed.eq_ignore_ascii_case("true") {
         serde_json::Value::Bool(true)
     } else if trimmed.eq_ignore_ascii_case("false") {
         serde_json::Value::Bool(false)
     } else {
-        serde_json::Value::String(trimmed.to_string())
+        serde_json::Value::String(trimmed.to_owned())
     }
 }
 
@@ -289,6 +292,10 @@ pub fn parse_ini_value(value: &str) -> serde_json::Value {
 /// let settings: GameSettings = from_str(ini_str).unwrap();
 /// assert_eq!(settings.option_settings.difficulty, "Hard");
 /// ```
+///
+/// # Errors
+///
+/// Returns an error when the parsed JSON representation cannot be deserialized into `T`.
 pub fn from_str<T: DeserializeOwned>(ini_str: &str) -> Result<T, serde_json::Error> {
     let mut map = serde_json::Map::new();
     let mut current_key: Option<String> = None;
@@ -302,7 +309,7 @@ pub fn from_str<T: DeserializeOwned>(ini_str: &str) -> Result<T, serde_json::Err
         }
         // Detect start of a nested block (e.g., OptionSettings=()
         if line.ends_with("=(") {
-            let key = line.trim_end_matches("=(").trim().to_string();
+            let key = line.trim_end_matches("=(").trim().to_owned();
             current_key = Some(key);
             in_nested = true;
             nested_map = serde_json::Map::new();
@@ -314,13 +321,13 @@ pub fn from_str<T: DeserializeOwned>(ini_str: &str) -> Result<T, serde_json::Err
         } else if in_nested {
             // Process nested key=value lines (remove trailing commas).
             if let Some((key, value)) = line.split_once('=') {
-                let key = key.trim().to_string();
-                let value = value.trim().trim_end_matches(',').to_string();
+                let key = key.trim().to_owned();
+                let value = value.trim().trim_end_matches(',').to_owned();
                 nested_map.insert(key, parse_ini_value(&value));
             }
         } else if let Some((key, value)) = line.split_once('=') {
-            let key = key.trim().to_string();
-            let value = value.trim().trim_end_matches(',').to_string();
+            let key = key.trim().to_owned();
+            let value = value.trim().trim_end_matches(',').to_owned();
             map.insert(key, parse_ini_value(&value));
         }
     }
@@ -331,6 +338,8 @@ pub fn from_str<T: DeserializeOwned>(ini_str: &str) -> Result<T, serde_json::Err
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use ini_derive::IniSerialize;
     use serde::{Deserialize, Serialize};
@@ -358,7 +367,7 @@ mod tests {
     fn test_ini_serialization_with_nested_struct() {
         let settings = GameSettings {
             option_settings: OptionSettings {
-                difficulty: "Hard".to_string(),
+                difficulty: "Hard".to_owned(),
                 day_time_speed_rate: 1.5,
                 night_time_speed_rate: 0.8, // even if the actual value is 0.800000011920929,
             },
@@ -385,7 +394,7 @@ NightTimeSpeedRate=0.8,\n\
         let deserialized: GameSettings = from_str(ini_string).unwrap();
         let expected = GameSettings {
             option_settings: OptionSettings {
-                difficulty: "Hard".to_string(),
+                difficulty: "Hard".to_owned(),
                 day_time_speed_rate: 1.5,
                 night_time_speed_rate: 0.8,
             },
@@ -397,7 +406,7 @@ NightTimeSpeedRate=0.8,\n\
     fn test_round_trip_with_nested_struct() {
         let settings = GameSettings {
             option_settings: OptionSettings {
-                difficulty: "Hard".to_string(),
+                difficulty: "Hard".to_owned(),
                 day_time_speed_rate: 1.5,
                 night_time_speed_rate: 0.8,
             },

@@ -42,7 +42,7 @@ fn add_additional_args(args: &mut Vec<String>) {
     if let Ok(extra_args) = env::var("ADDITIONAL_STEAMCMD_ARGS") {
         let trimmed = extra_args.trim_matches('"').trim();
         if !trimmed.is_empty() {
-            args.push(trimmed.to_string());
+            args.push(trimmed.to_owned());
         }
     }
 }
@@ -76,6 +76,10 @@ fn add_additional_args(args: &mut Vec<String>) {
 ///   `ADDITIONAL_STEAMCMD_ARGS` environment variable.
 /// - The command's standard output and error are inherited, so they will be displayed
 ///   in the console.
+///
+/// # Errors
+///
+/// Returns any I/O error encountered while spawning or waiting on the SteamCMD process.
 pub fn install<P: AsRef<Path>>(
     app_id: u32,
     install_dir: P,
@@ -89,7 +93,7 @@ pub fn install<P: AsRef<Path>>(
     );
 
     // Base SteamCMD arguments.
-    let login = "+login anonymous".to_string();
+    let login = "+login anonymous".to_owned();
     let force_install_dir = format!("+force_install_dir {}", install_dir.as_ref().display());
     let app_update = format!("+app_update {app_id} validate");
 
@@ -122,6 +126,13 @@ pub fn install<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::unreadable_literal
+    )]
+
     use super::{add_additional_args, install};
     use crate::test_support::env_lock;
     use std::fs;
@@ -140,7 +151,7 @@ mod tests {
 
     #[test]
     fn add_additional_args_ignores_missing_or_blank_values() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut args = Vec::new();
 
         unsafe {
@@ -162,7 +173,7 @@ mod tests {
 
     #[test]
     fn add_additional_args_trims_wrapping_quotes() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut args = Vec::new();
 
         unsafe {
@@ -180,7 +191,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn install_passes_expected_args_to_steamcmd() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let args_path = temp_dir.path().join("args.txt");
         let script_path = temp_dir.path().join("fake-steamcmd.sh");
@@ -196,21 +207,19 @@ mod tests {
         }
 
         let extra_args = vec![String::from("+download_depot 123 456")];
-        let status = install(2278520, temp_dir.path(), true, &extra_args).unwrap();
+        let status = install(2_278_520, temp_dir.path(), true, &extra_args).unwrap();
         assert!(status.success());
 
         let recorded_args = fs::read_to_string(&args_path).unwrap();
         let lines: Vec<&str> = recorded_args.lines().collect();
-        assert_eq!(lines[0], "+@sSteamCmdForcePlatformType windows");
-        assert_eq!(
-            lines[1],
-            format!("+force_install_dir {}", temp_dir.path().display())
-        );
-        assert_eq!(lines[2], "+login anonymous");
-        assert_eq!(lines[3], "+app_update 2278520 validate");
-        assert_eq!(lines[4], "+download_depot 123 456");
-        assert_eq!(lines[5], "+app_info_update 1");
-        assert_eq!(lines[6], "+quit");
+        assert_eq!(lines.first().copied(), Some("+@sSteamCmdForcePlatformType windows"));
+        let expected_force_install_dir = format!("+force_install_dir {}", temp_dir.path().display());
+        assert_eq!(lines.get(1).copied(), Some(expected_force_install_dir.as_str()));
+        assert_eq!(lines.get(2).copied(), Some("+login anonymous"));
+        assert_eq!(lines.get(3).copied(), Some("+app_update 2278520 validate"));
+        assert_eq!(lines.get(4).copied(), Some("+download_depot 123 456"));
+        assert_eq!(lines.get(5).copied(), Some("+app_info_update 1"));
+        assert_eq!(lines.get(6).copied(), Some("+quit"));
 
         unsafe {
             std::env::remove_var("STEAMCMD_PATH");

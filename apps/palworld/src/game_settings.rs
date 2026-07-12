@@ -298,9 +298,9 @@ impl GameSettings {
     /// Constructs the base (Normal preset) configuration based on the golden INI.
     pub fn normal() -> Self {
         Self {
-            difficulty: "None".to_string(),
-            randomizer_type: "None".to_string(),
-            randomizer_seed: "".to_string(),
+            difficulty: "None".to_owned(),
+            randomizer_type: "None".to_owned(),
+            randomizer_seed: String::new(),
             is_randomizer_pal_level_random: false,
             day_time_speed_rate: 1.0,
             night_time_speed_rate: 1.0,
@@ -329,7 +329,7 @@ impl GameSettings {
             collection_object_hp_rate: 1.0,
             collection_object_respawn_speed_rate: 1.0,
             enemy_drop_item_rate: 1.0,
-            death_penalty: "All".to_string(),
+            death_penalty: "All".to_owned(),
             enable_pvp: false,
             enable_friendly_fire: false,
             enable_invader_enemy: true,
@@ -363,24 +363,24 @@ impl GameSettings {
             item_weight_rate: 1.0,
             coop_player_max_num: 4,
             server_player_max_num: 32,
-            server_name: "Default Palworld Server".to_string(),
-            server_description: "".to_string(),
-            admin_password: "".to_string(),
-            server_password: "".to_string(),
+            server_name: "Default Palworld Server".to_owned(),
+            server_description: String::new(),
+            admin_password: String::new(),
+            server_password: String::new(),
             public_port: 8211,
-            public_ip: "".to_string(),
+            public_ip: String::new(),
             rcon_enabled: false,
             rcon_port: 25575,
             use_auth: true,
-            region: "".to_string(),
-            ban_list_url: "https://api.palworldgame.com/api/banlist.txt".to_string(),
+            region: String::new(),
+            ban_list_url: "https://api.palworldgame.com/api/banlist.txt".to_owned(),
             restapi_enabled: false,
             restapi_port: 8212,
             show_player_list: false,
             chat_post_limit_per_minute: 10,
-            crossplay_platforms: "(Steam,Xbox,PS5,Mac)".to_string(),
+            crossplay_platforms: "(Steam,Xbox,PS5,Mac)".to_owned(),
             is_use_backup_save_data: true,
-            log_format_type: "Text".to_string(),
+            log_format_type: "Text".to_owned(),
             supply_drop_span: 180.0,
             enable_predator_boss_pal: true,
             max_building_limit_num: 0,
@@ -435,7 +435,7 @@ impl GameSettings {
                 self.collection_object_hp_rate = 1.0;
                 self.collection_object_respawn_speed_rate = 2.0;
                 self.enemy_drop_item_rate = 0.7;
-                self.death_penalty = "Drop all Items and all Pals on Team".to_string();
+                self.death_penalty = "Drop all Items and all Pals on Team".to_owned();
             }
         }
     }
@@ -755,7 +755,13 @@ impl Default for GameSettings {
 
 /// Saves the configuration to an INI file.
 pub fn save_config(path: &Path, settings: &Settings) {
-    let ini_config = to_string(&settings).unwrap();
+    let ini_config = match to_string(&settings) {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("Failed to serialize config: {error}");
+            return;
+        }
+    };
 
     if let Err(e) = fs::write(path, ini_config) {
         eprintln!("Failed to save config: {e}");
@@ -764,8 +770,14 @@ pub fn save_config(path: &Path, settings: &Settings) {
 
 /// Loads the configuration from an INI file or returns defaults if the file is missing.
 pub fn load_or_create_config(path: &Path) -> GameSettings {
-    if !path.parent().unwrap().exists() {
-        create_dir_all(path.parent().unwrap()).unwrap();
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+        && let Err(error) = create_dir_all(parent)
+    {
+        eprintln!(
+            "Failed to create config directory {}: {error}",
+            parent.display()
+        );
     }
     let default_config = Settings::default();
     save_config(path, &default_config);
@@ -774,6 +786,8 @@ pub fn load_or_create_config(path: &Path) -> GameSettings {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+
     use super::*;
     use std::env;
     use std::fs;
@@ -798,7 +812,7 @@ mod tests {
             "PRESET",
             "SERVER_NAME",
         ];
-        for var in vars.iter() {
+        for var in &vars {
             unsafe { env::remove_var(var) };
         }
     }

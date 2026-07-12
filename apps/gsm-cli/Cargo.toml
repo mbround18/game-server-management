@@ -12,7 +12,10 @@ gsm-monitor = { path = "../../libs/gsm-monitor" }
 gsm-shared = { path = "../../libs/gsm-shared" }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-tokio = { version = "1.52.1", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+[lints]
+workspace = true

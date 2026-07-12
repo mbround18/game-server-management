@@ -18,18 +18,24 @@ impl syn::parse::Parse for IniHeaderArgs {
         input.parse::<syn::Token![=]>()?;
         // Parse a literal string value
         let lit: LitStr = input.parse()?;
-        Ok(IniHeaderArgs { name: lit })
+        Ok(Self { name: lit })
     }
 }
 
 #[proc_macro_derive(IniSerialize, attributes(INIHeader))]
+/// Derives `IniHeader` from an `#[INIHeader(name = \"...\")]` attribute.
+///
+/// # Panics
+///
+/// Panics when the derive target does not include a valid `INIHeader(name = \"...\")`
+/// attribute.
 pub fn ini_serialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
 
     // Look for #[INIHeader(name = "...")]
     let mut header_value = None;
-    for attr in input.attrs.iter() {
+    for attr in &input.attrs {
         if attr.path().is_ident("INIHeader")
             && let Ok(args) = attr.parse_args::<IniHeaderArgs>()
         {

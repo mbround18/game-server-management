@@ -1,12 +1,12 @@
 use crate::parse_truthy;
-use cached::proc_macro::cached;
+use cached::macros::cached;
 use std::env;
 
 /// Fetches an environment variable, returning `default` if not set or empty.
 pub fn fetch_var(name: &str, default: &str) -> String {
     match env::var(name) {
         Ok(value) if !value.is_empty() => value,
-        _ => default.to_string(),
+        _ => default.to_owned(),
     }
 }
 
@@ -16,7 +16,9 @@ pub fn fetch_multiple_var(name: &str, default: &str) -> String {
     if value.is_empty() {
         value
     } else {
-        format!("{value}:")
+        let mut value = value;
+        value.push(':');
+        value
     }
 }
 

@@ -17,3 +17,46 @@ debug = true           # Include debug info
 overflow-checks = true # Safer in development
 incremental = true     # Speed up rebuilds
 codegen-units = 256    # Default (improves incremental builds)
+
+[workspace.lints.clippy]
+# 1. Base Quality Level
+all = {level ="warn", priority = -1 }      # Catch standard errors, styling, and correctness issues
+pedantic = {level = "warn",priority = -1 } # Strict checks for code quality, clarity, and performance
+nursery = {level = "warn", priority = -1 }   # Highly useful, incoming code quality lints
+
+# 2. Prevent Silent Failures & Heavy Bugs
+unwrap_used = "deny"        # Force safe error handling; crash on unwrap
+expect_used = "warn"        # Flag crashes, but allow if documented via expect
+todo = "warn"               # Never let development macros slip into production
+panic = "warn"              # Keep library code pure by discouraging panic paths
+
+# 3. Code Optimization & Performance
+cloned_instead_of_copied = "warn" # Optimize iterator or reference operations
+inefficient_to_string = "warn"    # Avoid allocations from bad .to_string() calls
+rc_buffer = "warn"                # Catch inefficient allocations like Rc<String> or Arc<Vec>
+str_to_string = "warn"            # Warn against .to_string() on strs; prefer .to_owned()
+
+# 4. Strict Readability & Clarity
+enum_glob_use = "deny"            # Block clean-but-dangerous wildcard enum imports
+missing_errors_doc = "warn"       # Require standard documentation for Error enums
+explicit_into_iter_loop = "warn"  # Encourage idiomatic loop structures
+match_same_arms = "warn"          # Flag duplicate match arm logic that should be combined
+
+# 5. Code Complexity Rules
+complexity = { level = "warn", priority = -1}          # Warns on functions that are too long or complex
+type_complexity = "warn"          # Warns when types (like nested generics/tuples) get too hard to read
+suboptimal_flops = "warn"         # Catches non-idiomatic math operations that could be optimized
+needless_continue = "warn"        # Prevents messy, deeply nested loops by flagging extra "continue"s
+manual_let_else = "warn"          # Forces use of modern, flat let-else statements
+redundant_closure_for_method_calls = "warn" # Replaces `|x| foo(x)` with just `foo` to flatten code
+
+# 6. Correctness & Security
+indexing_slicing = "warn"         # Warns on arr[i] which can panic; encourages .get()
+cast_lossless = "warn"            # Flags numeric casts that could safely use From::from
+float_cmp = "deny"                # Enforces safe float comparisons; blocks dangerous == on f32/f64
+exit = "deny"                     # Prevents raw std::process::exit calls in libraries
+
+# 7. Fine-Tuning (Whitelisting Overly Loud Lints)
+must_use_candidate = { level = "allow", priority = 1 } # Avoid constant #[must_use] prompts
+cast_possible_truncation = { level = "allow", priority = 1 } # Avoid constant type casting noise
+doc_markdown = { level = "allow", priority = 1 } # Prevents Clippy from complaining about unescaped code words

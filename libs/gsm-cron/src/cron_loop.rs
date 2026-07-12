@@ -33,7 +33,7 @@ use tokio::time::sleep;
 pub async fn begin_cron_loop() {
     loop {
         tokio::select! {
-            _ = sleep(Duration::from_secs(60)) => {
+            () = sleep(Duration::from_mins(1)) => {
                 // Normal tick every 60 seconds. This loop can be used to
                 // integrate with signal handling for graceful shutdown.
             }

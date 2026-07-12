@@ -37,7 +37,7 @@ use tracing::debug;
 /// It checks the `STEAMCMD_PATH` environment variable to override the default location.
 /// If not set, it defaults to `"steamcmd"`.
 pub fn steamcmd_command() -> Command {
-    let cmd = std::env::var("STEAMCMD_PATH").unwrap_or_else(|_| "steamcmd".to_string());
+    let cmd = std::env::var("STEAMCMD_PATH").unwrap_or_else(|_| "steamcmd".to_owned());
     debug!("Using steamcmd executable: {}", cmd);
     Command::new(cmd)
 }
@@ -66,6 +66,10 @@ pub fn steamcmd_command() -> Command {
 /// let output = run_steamcmd(args).expect("Failed to run steamcmd");
 /// println!("SteamCMD output: {:?}", output);
 /// ```
+///
+/// # Errors
+///
+/// Returns any I/O error produced while invoking SteamCMD.
 pub fn run_steamcmd(args: &[&str]) -> Result<std::process::Output, std::io::Error> {
     let output = steamcmd_command().args(args).output()?;
     Ok(output)
@@ -79,7 +83,7 @@ mod tests {
 
     #[test]
     fn steamcmd_command_defaults_to_steamcmd_binary() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::remove_var("STEAMCMD_PATH");
@@ -91,7 +95,7 @@ mod tests {
 
     #[test]
     fn steamcmd_command_uses_env_override_when_present() {
-        let _lock = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::set_var("STEAMCMD_PATH", "/tmp/custom-steamcmd");

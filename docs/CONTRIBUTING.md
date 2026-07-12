@@ -16,11 +16,24 @@ This project uses a `Makefile` for streamlined development. The primary commands
 
 ```sh
 make lint         # Format and lint the Rust code
+make doc-audit    # Run clippy, doctests, and public-api reporting
 make test         # Run tests
 make build        # Build the project
 make docker-build # Build the Docker container
 make docker-push  # Push the built container to the registry
 ```
+
+## Documentation Quality
+
+Use these commands before opening a PR when you touch public APIs or module docs:
+
+```sh
+cargo clippy --all-targets --all-features
+cargo test --doc --workspace
+./scripts/public-api-report.sh
+```
+
+These checks enforce the repository doc baseline (`# Errors` / `# Panics` sections where required), keep doctest examples valid, and capture the public API surface for review.
 
 ### Installation Notes
 

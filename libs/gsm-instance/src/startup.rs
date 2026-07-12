@@ -64,12 +64,17 @@ fn ensure_log_dir(working_dir: &Path) -> Result<(), InstanceError> {
 ///   file is removed, and an error is returned.
 /// - Standard output and error of the child process are redirected to `server.log`
 ///   and `server.err` files in the `logs` directory.
-pub fn start_daemonized(config: InstanceConfig) -> Result<Child, InstanceError> {
+///
+/// # Errors
+///
+/// Returns an error when log setup, command launch, pid file writes, or immediate
+/// startup validation fails.
+pub fn start_daemonized(config: &InstanceConfig) -> Result<Child, InstanceError> {
     info!("Starting server as a daemonized process...");
     let working_dir = config.working_dir.clone();
     ensure_log_dir(&working_dir)?;
 
-    match launch_server(&config) {
+    match launch_server(config) {
         Ok(mut cmd) => match cmd.spawn() {
             Ok(mut child) => {
                 let pid = child.id();

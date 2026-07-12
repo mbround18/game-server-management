@@ -10,7 +10,7 @@ use regex::Regex;
 ///
 /// An `Option` containing a tuple with the author, mod name, and version if parsing is successful; `None` otherwise.
 pub fn parse_mod_string(mod_string: &str) -> Option<(&str, &str, &str)> {
-    let re = Regex::new(r"^([^-\s]+)-([^-]+)-([\d\.]+)$").unwrap();
+    let re = Regex::new(r"^([^-\s]+)-([^-]+)-([\d\.]+)$").expect("mod string regex should compile");
     re.captures(mod_string).and_then(|caps| {
         if caps.len() == 4 {
             Some((

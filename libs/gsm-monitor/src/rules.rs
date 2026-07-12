@@ -4,6 +4,7 @@
 //! the associated action. Log rules are stored and processed in order of their ranking.
 
 use crate::constants::INSTANCE_TARGET;
+use std::sync::PoisonError;
 use std::sync::{Arc, RwLock};
 use tracing::{error, info, trace, warn};
 
@@ -35,7 +36,7 @@ pub struct LogRule {
 impl Default for LogRule {
     fn default() -> Self {
         trace!("Creating default LogRule");
-        LogRule {
+        Self {
             matcher: Arc::new(|_| true),
             action: Arc::new(|line| info!(target: INSTANCE_TARGET, "{line}")),
             ranking: DEFAULT_STOP_INT,
@@ -70,7 +71,7 @@ impl LogRules {
         G: Fn(&str) + Send + Sync + 'static,
     {
         trace!("Adding new rule with stop flag: {stop}");
-        let mut rules = self.rules.write().unwrap();
+        let mut rules = self.rules.write().unwrap_or_else(PoisonError::into_inner);
         let mut rule = LogRule::new();
         rule.stop = stop;
         rule.matcher = Arc::new(matcher);
@@ -81,7 +82,11 @@ impl LogRules {
 
     pub fn get_rules(&self) -> Vec<LogRule> {
         trace!("Retrieving and sorting rules");
-        let mut rules = self.rules.read().unwrap().clone();
+        let mut rules = self
+            .rules
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         rules.sort_by_key(|r| r.ranking);
         trace!("Sorted rules count: {}", rules.len());
         rules

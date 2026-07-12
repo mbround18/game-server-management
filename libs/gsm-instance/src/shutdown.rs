@@ -55,12 +55,12 @@ pub fn blocking_shutdown(executable: &str) {
     loop {
         let mut sp = server_process.clone();
         debug!("Checking if server processes are still running...");
-        if !sp.are_processes_running(executable) {
-            info!("Server processes have been stopped successfully!");
-            break;
-        } else {
+        if sp.are_processes_running(executable) {
             debug!("Server processes still running. Waiting for 5 seconds...");
             thread::sleep(Duration::from_secs(5));
+        } else {
+            info!("Server processes have been stopped successfully!");
+            break;
         }
     }
 }

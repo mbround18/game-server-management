@@ -99,23 +99,27 @@ impl ProtonConfig {
 ///
 /// * `version`: An optional version string. If `Some`, it will look for a matching version.
 ///   If `None`, it will return the first Proton installation it finds.
+///
+/// # Errors
+///
+/// Returns an error when no compatible Proton install can be found or downloaded,
+/// or when discovered paths/configuration cannot be converted into a valid config.
 pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
-    let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
+    let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_owned());
     let proton_dir = env::var("PROTON_DIR").unwrap_or_else(|_| format!("{home}/proton"));
 
     // Try glob search in common compatibility tools directories first
     let glob_patterns = [
-        "/home/steam/.steam/root/compatibilitytools.d/*Proton*/proton".to_string(),
-        "/home/steam/.steam/steam/compatibilitytools.d/*Proton*/proton".to_string(),
+        "/home/steam/.steam/root/compatibilitytools.d/*Proton*/proton".to_owned(),
+        "/home/steam/.steam/steam/compatibilitytools.d/*Proton*/proton".to_owned(),
         format!(
-            "{}/.local/share/Steam/compatibilitytools.d/*Proton*/proton",
-            home
+            "{home}/.local/share/Steam/compatibilitytools.d/*Proton*/proton"
         ),
-        format!("{}/.steam/root/compatibilitytools.d/*Proton*/proton", home),
-        format!("{}/.steam/steam/compatibilitytools.d/*Proton*/proton", home),
-        format!("{}/.steam/compatibilitytools.d/*Proton*/proton", home),
-        format!("{}/GE-Proton*/proton", proton_dir),
-        format!("{}/*Proton*/proton", proton_dir),
+        format!("{home}/.steam/root/compatibilitytools.d/*Proton*/proton"),
+        format!("{home}/.steam/steam/compatibilitytools.d/*Proton*/proton"),
+        format!("{home}/.steam/compatibilitytools.d/*Proton*/proton"),
+        format!("{proton_dir}/GE-Proton*/proton"),
+        format!("{proton_dir}/*Proton*/proton"),
     ];
 
     // If version is specified, try to find a specific version first
@@ -160,12 +164,12 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
 
     // If glob search failed, try specific paths
     let fallback_paths = [
-        "/usr/bin/proton".to_string(),
-        format!("{}/.local/share/Steam/steamapps/common/Proton/proton", home),
-        "/usr/local/bin/proton".to_string(),
-        format!("{}/Proton/proton", home),
-        format!("{}/proton/proton", home),
-        format!("{}/proton", proton_dir),
+        "/usr/bin/proton".to_owned(),
+        format!("{home}/.local/share/Steam/steamapps/common/Proton/proton"),
+        "/usr/local/bin/proton".to_owned(),
+        format!("{home}/Proton/proton"),
+        format!("{home}/proton/proton"),
+        format!("{proton_dir}/proton"),
     ];
 
     debug!("Glob search failed, trying specific paths");
@@ -183,16 +187,16 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     // If version was specified and not found, try to download it
     if let Some(v) = version {
         // Don't try to download if it looks like a path
-        if !v.contains('/') {
+        if v.contains('/') {
+            debug!("Version '{}' looks like a path but wasn't found", v);
+        } else {
             debug!("Attempting to download Proton version: {}", v);
             return download_proton(v);
-        } else {
-            debug!("Version '{}' looks like a path but wasn't found", v);
         }
     }
 
     Err(ProtonError::NotFound(
-        "No Proton installation found.".to_string(),
+        "No Proton installation found.".to_owned(),
     ))
 }
 
@@ -204,22 +208,21 @@ fn create_proton_config<P: AsRef<Path>>(
     let path_str = path
         .as_ref()
         .to_str()
-        .ok_or(ProtonError::PathConversion)?
-        .to_string();
+        .ok_or(ProtonError::PathConversion)?.to_owned();
 
     // Create basic environment variables
     let env_vars = Vec::new();
 
     // Add parent directory as STEAM_COMPAT_DATA_PATH if it exists
     let _parent = path.as_ref().parent().ok_or_else(|| {
-        ProtonError::NotFound("Could not find parent directory for proton".to_string())
+        ProtonError::NotFound("Could not find parent directory for proton".to_owned())
     })?;
 
     Ok(ProtonConfig {
         path: path_str,
         prefix: None, // Will be set by caller if needed
-        version: version.to_string(),
-        app_id: "0".to_string(), // Will be set by caller if needed
+        version: version.to_owned(),
+        app_id: "0".to_owned(), // Will be set by caller if needed
         env_vars,
     })
 }
@@ -232,24 +235,27 @@ fn create_proton_config<P: AsRef<Path>>(
 /// # Arguments
 ///
 /// * `version`: The version of Proton GE to download (e.g., "GE-Proton8-25").
+///
+/// # Errors
+///
+/// Returns an error when download, archive extraction, or target directory setup fails.
 pub fn download_proton(version: &str) -> Result<ProtonConfig, ProtonError> {
     // Define the download URL and target directory
     let download_url = format!(
-        "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/{0}/{0}.tar.gz",
-        version
+        "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/{version}/{version}.tar.gz"
     );
 
     // Create the compatibility tools directory
     let home = env::var("HOME")
-        .map_err(|_| ProtonError::EnvError("HOME environment variable not found".to_string()))?;
-    let target_dir = format!("{}/.steam/steam/compatibilitytools.d", home);
-    let proton_dir = format!("{}/{}", target_dir, version);
+        .map_err(|_| ProtonError::EnvError("HOME environment variable not found".to_owned()))?;
+    let target_dir = format!("{home}/.steam/steam/compatibilitytools.d");
+    let proton_dir = format!("{target_dir}/{version}");
 
     debug!("Creating directory: {}", target_dir);
     create_dir_all(&target_dir)?;
 
     // Check if this version is already installed
-    let proton_path = format!("{}/proton", proton_dir);
+    let proton_path = format!("{proton_dir}/proton");
     if Path::new(&proton_path).exists() {
         debug!("Proton {} is already installed at {}", version, proton_path);
         return create_proton_config(&proton_path, version);
@@ -260,7 +266,7 @@ pub fn download_proton(version: &str) -> Result<ProtonConfig, ProtonError> {
     // Download the Proton package
     info!("Downloading Proton {} from {}", version, download_url);
     let temp_dir = tempdir()?;
-    let tar_gz_path = temp_dir.path().join(format!("{}.tar.gz", version));
+    let tar_gz_path = temp_dir.path().join(format!("{version}.tar.gz"));
 
     let mut response = reqwest::blocking::get(&download_url)?;
     let mut file = File::create(&tar_gz_path)?;
@@ -290,26 +296,30 @@ pub fn download_proton(version: &str) -> Result<ProtonConfig, ProtonError> {
 ///
 /// * `config`: A mutable reference to the `ProtonConfig`.
 /// * `prefix_path`: The path to the Wine prefix directory.
+///
+/// # Errors
+///
+/// Returns an error when prefix or `pfx` directory creation fails.
 pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), ProtonError> {
     // Ensure the prefix directory exists
     debug!("Setting up Proton prefix at {}", prefix_path);
     create_dir_all(prefix_path)?;
 
     // Update the config with the prefix path
-    config.prefix = Some(prefix_path.to_string());
+    config.prefix = Some(prefix_path.to_owned());
 
     // Add necessary environment variables
     config.env_vars.push((
-        "STEAM_COMPAT_DATA_PATH".to_string(),
-        prefix_path.to_string(),
+        "STEAM_COMPAT_DATA_PATH".to_owned(),
+        prefix_path.to_owned(),
     ));
     config.env_vars.push((
-        "STEAM_COMPAT_CLIENT_INSTALL_PATH".to_string(),
-        prefix_path.to_string(),
+        "STEAM_COMPAT_CLIENT_INSTALL_PATH".to_owned(),
+        prefix_path.to_owned(),
     ));
 
     // Create pfx directory if it doesn't exist
-    let pfx_dir = format!("{}/pfx", prefix_path);
+    let pfx_dir = format!("{prefix_path}/pfx");
     if !Path::new(&pfx_dir).exists() {
         debug!("Creating Proton pfx directory at {}", pfx_dir);
         create_dir_all(&pfx_dir)?;
@@ -326,43 +336,44 @@ pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), 
 /// # Arguments
 ///
 /// * `config`: A mutable reference to the `ProtonConfig` to be updated with environment variables.
+///
+/// # Errors
+///
+/// Returns an error when required filesystem paths for Proton runtime setup cannot be created.
 pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
     // Setup basic Proton/Wine environment variables
     let prefix_path = config
         .prefix
         .clone()
-        .unwrap_or_else(|| "/tmp/proton-prefix".to_string());
-    let pfx_path = format!("{}/pfx", prefix_path);
+        .unwrap_or_else(|| "/tmp/proton-prefix".to_owned());
+    let pfx_path = format!("{prefix_path}/pfx");
 
     // Critical Proton variables
     config
         .env_vars
-        .push(("STEAM_RUNTIME".to_string(), "1".to_string()));
+        .push(("STEAM_RUNTIME".to_owned(), "1".to_owned()));
     let app_id = env::var("STEAM_APP_ID").unwrap_or_else(|_| config.app_id.clone());
     config
         .env_vars
-        .push(("SteamAppId".to_string(), app_id.clone()));
-    config.env_vars.push(("SteamGameId".to_string(), app_id));
+        .push(("SteamAppId".to_owned(), app_id.clone()));
+    config.env_vars.push(("SteamGameId".to_owned(), app_id));
     config
         .env_vars
-        .push(("WINEPREFIX".to_string(), pfx_path.clone()));
+        .push(("WINEPREFIX".to_owned(), pfx_path));
 
     // Setup Steam client paths
-    let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_string());
-    let steam_root = format!("{}/.local/share/Steam", home);
+    let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_owned());
+    let steam_root = format!("{home}/.local/share/Steam");
     let steam_lib_paths = [
-        format!("{}/linux64", steam_root),
+        format!("{steam_root}/linux64"),
         format!(
-            "{}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu",
-            steam_root
+            "{steam_root}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu"
         ),
         format!(
-            "{}/steamapps/common/SteamLinuxRuntime/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu",
-            steam_root
+            "{steam_root}/steamapps/common/SteamLinuxRuntime/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu"
         ),
         format!(
-            "{}/steamapps/common/SteamLinuxRuntime_soldier/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu",
-            steam_root
+            "{steam_root}/steamapps/common/SteamLinuxRuntime_soldier/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu"
         ),
     ];
 
@@ -373,19 +384,19 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
             debug!("Using Steam library path: {}", steam_lib);
 
             // Find steamclient.so
-            let steamclient_path = format!("{}/steamclient.so", steam_lib);
+            let steamclient_path = format!("{steam_lib}/steamclient.so");
             if Path::new(&steamclient_path).exists() {
                 debug!("Found steamclient.so at: {}", steamclient_path);
                 config
                     .env_vars
-                    .push(("STEAM_CLIENT_LIBRARY_PATH".to_string(), steam_lib.clone()));
+                    .push(("STEAM_CLIENT_LIBRARY_PATH".to_owned(), steam_lib.clone()));
             }
 
             // Add to library path
             if library_paths.is_empty() {
-                library_paths = steam_lib.clone();
+                library_paths.clone_from(steam_lib);
             } else {
-                library_paths = format!("{}:{}", library_paths, steam_lib);
+                library_paths = format!("{library_paths}:{steam_lib}");
             }
         }
     }
@@ -396,12 +407,12 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
         let new_lib_path = if current_lib_path.is_empty() {
             library_paths
         } else {
-            format!("{}:{}", library_paths, current_lib_path)
+            format!("{library_paths}:{current_lib_path}")
         };
 
         config
             .env_vars
-            .push(("LD_LIBRARY_PATH".to_string(), new_lib_path));
+            .push(("LD_LIBRARY_PATH".to_owned(), new_lib_path));
     }
 
     // Configure optional Proton settings
@@ -413,9 +424,9 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
         ("PROTON_NO_FSYNC", "0"),
     ] {
         if let Ok(value) = env::var(key) {
-            config.env_vars.push((key.to_string(), value));
+            config.env_vars.push((key.to_owned(), value));
         } else {
-            config.env_vars.push((key.to_string(), default.to_string()));
+            config.env_vars.push((key.to_owned(), default.to_owned()));
         }
     }
 

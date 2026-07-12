@@ -287,6 +287,8 @@ fn unwrap_or_exit<T>(result: Result<T, clap::Error>) -> T {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use std::env;
     use std::fs;
@@ -311,7 +313,7 @@ mod tests {
 
     #[test]
     fn cli_values_override_environment_values() {
-        let _lock = env_lock().lock().unwrap_or_else(|error| error.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("APP_ID", "1234");
@@ -347,7 +349,7 @@ mod tests {
 
     #[test]
     fn executable_is_required_for_runtime_commands() {
-        let _lock = env_lock().lock().unwrap_or_else(|error| error.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("APP_ID", "2278520");
@@ -379,7 +381,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn install_uses_env_values_when_cli_values_are_missing() {
-        let _lock = env_lock().lock().unwrap_or_else(|error| error.into_inner());
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let args_path = temp_dir.path().join("args.txt");
         let script_path = temp_dir.path().join("fake-steamcmd.sh");

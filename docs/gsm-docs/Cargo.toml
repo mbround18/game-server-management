@@ -6,3 +6,6 @@ edition = "2024"
 [lib]
 name = "gsm_docs"
 path = "src/lib.rs"
+
+[lints]
+workspace = true

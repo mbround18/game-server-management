@@ -8,5 +8,8 @@ name = "gsm_monitor"
 path = "src/lib.rs"
 
 [dependencies]
-log = "0.4.29"
+log = "0.4.33"
 tracing = "0.1.44"
+
+[lints]
+workspace = true
