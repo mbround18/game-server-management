@@ -52,17 +52,18 @@ enum Commands {
     },
 }
 
+fn setup_configuration(game_root: &Path) {
+    let config_path = game_root.join("enshrouded_server.json");
+    debug!("Loading or creating config at: {:?}", config_path);
+    game_settings::load_or_create_config(&config_path);
+    debug!("Config load or creation completed.");
+}
+
+#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
     debug!("Tracing subscriber initialized.");
-
-    fn setup_configuration(game_root: &Path) {
-        let config_path = game_root.join("enshrouded_server.json");
-        debug!("Loading or creating config at: {:?}", config_path);
-        game_settings::load_or_create_config(&config_path);
-        debug!("Config load or creation completed.");
-    }
 
     // Set the TZ environment variable to your desired timezone.
     #[cfg(unix)]
@@ -72,7 +73,7 @@ async fn main() {
 
     let cli = Cli::parse();
     let instance_config = InstanceConfig {
-        app_id: 2278520, // Enshrouded Steam App ID
+        app_id: 2_278_520, // Enshrouded Steam App ID
         name: name(),
         command: "enshrouded_server.exe".to_owned(),
         install_args: vec![],
@@ -127,8 +128,9 @@ async fn main() {
                 rules.add_rule(
                     |line| line.contains("[Session] 'HostOnline' (up)!"),
                     |_| {
-                        send_notifications(StandardServerEvents::Started)
-                            .expect("Failed to send webhook event! Invalid url?");
+                        if let Err(e) = send_notifications(StandardServerEvents::Started) {
+                            warn!("Failed to send webhook notification: {e}");
+                        }
                     },
                     false,
                     None,
@@ -138,8 +140,11 @@ async fn main() {
                     |line| line.contains("logged in with Permissions:"),
                     |line| {
                         if let Some(name) = utils::extract_player_joined_name(line) {
-                            send_notifications(StandardServerEvents::PlayerJoined(name))
-                                .expect("Failed to send webhook event! Invalid url?");
+                            if let Err(e) =
+                                send_notifications(StandardServerEvents::PlayerJoined(name))
+                            {
+                                warn!("Failed to send webhook notification: {e}");
+                            }
                         } else {
                             error!("Failed to extract player name from:\n{line}");
                         }
@@ -152,8 +157,11 @@ async fn main() {
                     |line| line.contains("[server] Remove Entity for Player"),
                     |line| {
                         if let Some(name) = utils::extract_player_left_name(line) {
-                            send_notifications(StandardServerEvents::PlayerLeft(name))
-                                .expect("Failed to send webhook event! Invalid url?");
+                            if let Err(e) =
+                                send_notifications(StandardServerEvents::PlayerLeft(name))
+                            {
+                                warn!("Failed to send webhook notification: {e}");
+                            }
                         } else {
                             error!("Failed to extract player name from:\n{line}");
                         }
@@ -229,8 +237,9 @@ async fn main() {
             if webhook_enabled && let Ok(delay_str) = env::var("STOP_DELAY") {
                 match delay_str.parse::<u64>() {
                     Ok(delay_sec) => {
-                        send_notifications(StandardServerEvents::Stopping)
-                            .expect("Failed to send webhook event! Invalid url?");
+                        if let Err(e) = send_notifications(StandardServerEvents::Stopping) {
+                            warn!("Failed to send webhook notification: {e}");
+                        }
                         tokio::time::sleep(Duration::from_secs(delay_sec)).await;
                     }
                     Err(_) => {
@@ -246,9 +255,8 @@ async fn main() {
             if let Err(e) = inst.stop() {
                 error!("Failed to stop: {}", e);
             } else {
-                if webhook_enabled {
-                    send_notifications(StandardServerEvents::Stopped)
-                        .expect("Failed to send webhook event! Invalid url?");
+                if webhook_enabled && let Err(e) = send_notifications(StandardServerEvents::Stopped) {
+                    warn!("Failed to send webhook notification: {e}");
                 }
                 debug!("Server stopped successfully.");
             }

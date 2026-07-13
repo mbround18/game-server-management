@@ -402,6 +402,92 @@ NightTimeSpeedRate=0.8,\n\
     }
 
     #[test]
+    fn parse_ini_value_handles_all_primitive_types() {
+        use serde_json::Value;
+
+        // Quoted string
+        assert_eq!(
+            parse_ini_value("\"hello\""),
+            Value::String("hello".to_owned())
+        );
+        // Integer
+        assert_eq!(parse_ini_value("42"), Value::Number(42.into()));
+        // Float
+        assert_eq!(
+            parse_ini_value("3.14"),
+            Value::Number(serde_json::Number::from_f64(3.14).unwrap())
+        );
+        // Booleans (case-insensitive)
+        assert_eq!(parse_ini_value("true"), Value::Bool(true));
+        assert_eq!(parse_ini_value("TRUE"), Value::Bool(true));
+        assert_eq!(parse_ini_value("false"), Value::Bool(false));
+        assert_eq!(parse_ini_value("False"), Value::Bool(false));
+        // Bare string fallback
+        assert_eq!(
+            parse_ini_value("SomeString"),
+            Value::String("SomeString".to_owned())
+        );
+        // Empty quoted string
+        assert_eq!(
+            parse_ini_value("\"\""),
+            Value::String(String::new())
+        );
+        // Whitespace trimmed
+        assert_eq!(parse_ini_value("  42  "), Value::Number(42.into()));
+    }
+
+    #[test]
+    fn from_str_parses_flat_key_value_pairs() {
+        #[derive(Deserialize, Debug, PartialEq)]
+        struct Flat {
+            name: String,
+            count: i64,
+            enabled: bool,
+        }
+
+        let ini = "[section]\nname=\"server\",\ncount=5,\nenabled=true,\n";
+        let result: Flat = from_str(ini).unwrap();
+        assert_eq!(result.name, "server");
+        assert_eq!(result.count, 5);
+        assert!(result.enabled);
+    }
+
+    #[test]
+    fn from_str_skips_comment_and_empty_lines() {
+        #[derive(Deserialize, Debug, PartialEq)]
+        struct Config {
+            key: String,
+        }
+        let ini = "[section]\n; this is a comment\n\nkey=\"value\",\n";
+        let result: Config = from_str(ini).unwrap();
+        assert_eq!(result.key, "value");
+    }
+
+    #[test]
+    fn to_string_serializes_flat_struct() {
+        #[derive(Serialize)]
+        struct Simple {
+            enabled: bool,
+            count: i32,
+        }
+
+        impl IniHeader for Simple {
+            fn ini_header() -> &'static str {
+                "TestSection"
+            }
+        }
+
+        let s = Simple {
+            enabled: true,
+            count: 3,
+        };
+        let out = to_string(&s).unwrap();
+        assert!(out.contains("[TestSection]"));
+        assert!(out.contains("count=3,"));
+        assert!(out.contains("enabled=true,"));
+    }
+
+    #[test]
     fn test_round_trip_with_nested_struct() {
         let settings = GameSettings {
             option_settings: OptionSettings {

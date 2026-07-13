@@ -64,7 +64,7 @@ impl From<serde_json::Error> for NotificationError {
 
 /// Generic payload for non–Discord notifications.
 #[derive(Serialize)]
-pub struct NotificationPayload<T: Serialize> {
+pub struct NotificationPayload<T> {
     pub notification_type: String,
     pub message: String,
     pub data: Option<T>,
@@ -104,9 +104,9 @@ struct DiscordWebhookBody {
 /// Returns a color value based on the notification type.
 fn get_discord_color(notification_type: &str) -> i32 {
     match notification_type.to_lowercase().as_str() {
-        "alert" => 0xFA113D,
-        "info" => 0x4BB543,
-        _ => 0x007F66,
+        "alert" => 0x00FA_113D,
+        "info" => 0x004B_B543,
+        _ => 0x0000_7F66,
     }
 }
 
@@ -265,7 +265,7 @@ pub fn send_notification<T: Serialize>(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::unreadable_literal)]
 
     use super::*;
     use serde_json::json;

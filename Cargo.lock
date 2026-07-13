@@ -824,6 +824,7 @@ name = "gsm-monitor"
 version = "0.1.0"
 dependencies = [
  "log",
+ "tempfile",
  "tracing",
 ]
 

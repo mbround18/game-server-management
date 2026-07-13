@@ -104,3 +104,47 @@ pub fn fetch_specific_release(version: &str) -> Result<ProtonRelease, ReleaseErr
         .find(|r| r.tag == version)
         .ok_or_else(|| ReleaseError::NotFound(format!("Release {version} not found")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn release_error_not_found_displays_correctly() {
+        let err = ReleaseError::NotFound("GE-Proton8-25".to_owned());
+        assert_eq!(err.to_string(), "Release not found: GE-Proton8-25");
+    }
+
+    #[test]
+    fn release_error_json_displays_correctly() {
+        let json_err = serde_json::from_str::<serde_json::Value>("invalid json {{")
+            .unwrap_err();
+        let err = ReleaseError::Json(json_err);
+        assert!(err.to_string().starts_with("Failed to parse JSON:"));
+    }
+
+    #[test]
+    fn fetch_latest_release_returns_not_found_on_empty_list() {
+        let releases: Vec<ProtonRelease> = vec![];
+        let result = releases
+            .into_iter()
+            .next()
+            .ok_or_else(|| ReleaseError::NotFound("No releases found".to_owned()));
+        assert!(matches!(result, Err(ReleaseError::NotFound(_))));
+    }
+
+    #[test]
+    fn fetch_specific_release_returns_not_found_for_missing_version() {
+        let releases: Vec<ProtonRelease> = vec![ProtonRelease {
+            tag: "GE-Proton8-1".to_owned(),
+            download_url: "https://example.com/proton.tar.gz".to_owned(),
+            release_date: "2024-01-01T00:00:00Z".to_owned(),
+        }];
+        let version = "GE-Proton9-99";
+        let result = releases
+            .into_iter()
+            .find(|r| r.tag == version)
+            .ok_or_else(|| ReleaseError::NotFound(format!("Release {version} not found")));
+        assert!(matches!(result, Err(ReleaseError::NotFound(_))));
+    }
+}

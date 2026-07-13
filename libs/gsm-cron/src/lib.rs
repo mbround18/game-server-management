@@ -135,7 +135,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_schedule;
+    use super::*;
 
     #[test]
     fn normalize_schedule_prepends_seconds_field_for_five_part_cron() {
@@ -145,5 +145,30 @@ mod tests {
     #[test]
     fn normalize_schedule_leaves_six_part_cron_unchanged() {
         assert_eq!(normalize_schedule("0 * * * * *"), "0 * * * * *");
+    }
+
+    #[tokio::test]
+    async fn spawn_scheduled_job_with_invalid_schedule_does_not_panic() {
+        // Invalid schedule must be silently rejected (error logged, no panic).
+        spawn_scheduled_job("not-a-cron-expression", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_accepts_six_field_schedule_without_panic() {
+        register_job("test-6field", "0 59 23 31 12 *", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_adjusts_five_field_schedule_without_panic() {
+        register_job("test-5field", "59 23 31 12 *", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_with_invalid_schedule_does_not_panic() {
+        register_job("test-invalid", "garbage schedule", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
 }

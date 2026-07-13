@@ -33,14 +33,13 @@ pub fn apply_env_overrides(config: &mut ServerConfig) {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
     use super::*;
     use crate::game_settings::{ServerConfig, UserGroup};
-    use std::sync::Mutex;
-    lazy_static::lazy_static! {
-        static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-    }
+    use std::sync::{LazyLock, Mutex};
+
+    static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     fn make_config_with_group(name: &str) -> ServerConfig {
         ServerConfig {

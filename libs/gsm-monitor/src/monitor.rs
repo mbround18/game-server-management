@@ -145,6 +145,74 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    use std::fs;
+    use std::sync::atomic::AtomicBool;
+    use tempfile::tempdir;
+
+    #[test]
+    fn monitor_new_creates_instance() {
+        let rules = LogRules::new();
+        let _monitor = Monitor::new(rules);
+    }
+
+    #[test]
+    fn run_returns_early_when_file_does_not_exist() {
+        let rules = LogRules::new();
+        let monitor = Monitor::new(rules);
+        // A path that does not exist: run() should open-fail and return immediately.
+        monitor.run(std::path::Path::new(
+            "/tmp/gsm-test-nonexistent-log-file-xyz.log",
+        ));
+    }
+
+    #[test]
+    fn run_processes_lines_appended_to_log_file() {
+        let temp = tempdir().unwrap();
+        let log_path = temp.path().join("server.log");
+        fs::write(&log_path, "").unwrap();
+
+        let hit = Arc::new(AtomicBool::new(false));
+        let hit_clone = Arc::clone(&hit);
+
+        let rules = LogRules::new();
+        rules.add_rule(
+            |line| line.contains("SENTINEL"),
+            move |_| {
+                hit_clone.store(true, Ordering::SeqCst);
+            },
+            true,
+            None,
+        );
+
+        let monitor = Monitor::new(rules);
+        let path = log_path.clone();
+        let handle = thread::spawn(move || monitor.run(&path));
+
+        thread::sleep(Duration::from_millis(50));
+        fs::write(&log_path, "line with SENTINEL keyword\n").unwrap();
+        thread::sleep(Duration::from_millis(300));
+
+        assert!(hit.load(Ordering::SeqCst), "rule action should have fired");
+        drop(handle); // thread runs forever; let it be reaped by the process
+    }
+
+    #[test]
+    fn start_monitor_in_thread_does_not_panic_for_missing_file() {
+        let temp = tempdir().unwrap();
+        let missing = temp.path().join("no-such-file.log");
+        let rules = LogRules::new();
+        // Should spawn a thread that opens/fails and exits cleanly.
+        start_monitor_in_thread(missing, rules);
+        thread::sleep(Duration::from_millis(50));
+    }
+
+    #[test]
+    fn start_instance_log_monitor_spawns_without_panic() {
+        let temp = tempdir().unwrap();
+        start_instance_log_monitor(temp.path(), LogRules::default());
+        thread::sleep(Duration::from_millis(50));
+    }
+
     #[test]
     fn process_rules_applies_matching_rules_in_ranking_order() {
         let hits = Arc::new(AtomicUsize::new(0));

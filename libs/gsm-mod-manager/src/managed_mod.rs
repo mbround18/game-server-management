@@ -41,7 +41,7 @@ impl ManagedMod {
     }
 
     /// Checks if the extracted mod is a BepInEx framework mod.
-    fn is_bepinex(&self, extract_path: &Path) -> bool {
+    fn is_bepinex(extract_path: &Path) -> bool {
         debug!("Checking if mod is BepInEx framework...");
         for entry in WalkDir::new(extract_path).into_iter().flatten() {
             let file_name = entry.file_name().to_string_lossy().to_lowercase();
@@ -120,7 +120,7 @@ impl ManagedMod {
                 .map_err(|e| ModError::ExtractionError(e.to_string()))?;
         }
 
-        let is_bepinex = self.is_bepinex(temp_dir.path());
+        let is_bepinex = Self::is_bepinex(temp_dir.path());
         let final_dir = if is_bepinex {
             &self.game_directory
         } else {

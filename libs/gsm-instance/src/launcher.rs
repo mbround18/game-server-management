@@ -416,6 +416,84 @@ mod tests {
         assert!(!is_truthy("no"));
     }
 
+    #[test]
+    fn launch_server_fails_when_log_dir_is_blocked_by_a_file() {
+        let temp = tempdir().unwrap();
+        // Pre-create a regular file where the logs dir would go.
+        let logs_path = temp.path().join("logs");
+        fs::write(&logs_path, "block").unwrap();
+
+        let config = InstanceConfig {
+            command: dummy_command(),
+            working_dir: temp.path().to_path_buf(),
+            launch_mode: LaunchMode::Native,
+            ..InstanceConfig::default()
+        };
+
+        assert!(launch_server(&config).is_err());
+    }
+
+    #[test]
+    fn launch_server_with_launch_args_appends_args_to_command() {
+        let config = InstanceConfig {
+            command: dummy_command(),
+            launch_args: vec!["--arg1".to_owned(), "--arg2".to_owned()],
+            launch_mode: LaunchMode::Native,
+            ..test_config(LaunchMode::Native)
+        };
+
+        let cmd = launch_server(&config).unwrap();
+        let args: Vec<_> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert!(args.contains(&"--arg1".to_owned()));
+        assert!(args.contains(&"--arg2".to_owned()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn windows_compat_none_returns_error_when_no_compat_layer() {
+        let _lock = crate::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let temp_home = tempdir().unwrap().keep();
+        unsafe {
+            std::env::set_var("HOME", &temp_home);
+            // Ensure FORCE_PROTON is not set so we don't get a different error.
+            std::env::remove_var("FORCE_PROTON");
+            std::env::remove_var("PROTON_VERSION");
+        }
+
+        // Use Wine mode; if wine is not on this machine the compat layer is None
+        // and launch_server must return an error.
+        if which::which("wine64").is_ok() || which::which("wine").is_ok() {
+            // Wine is present — skip rather than give a false result.
+            unsafe {
+                std::env::remove_var("HOME");
+            }
+            return;
+        }
+
+        let config = InstanceConfig {
+            command: "game.exe".to_owned(),
+            working_dir: temp_home.join("server"),
+            launch_mode: LaunchMode::Wine,
+            ..InstanceConfig::default()
+        };
+
+        let result = launch_server(&config);
+        assert!(
+            result.is_err(),
+            "expected error when no Windows compat layer is available"
+        );
+
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+    }
+
     #[cfg(unix)]
     #[test]
     fn launch_server_uses_proton_when_available() {
