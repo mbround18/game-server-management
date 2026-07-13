@@ -26,12 +26,12 @@ jobs:
       components: clippy,rustfmt
 
   audit:
-    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
+    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
     needs:
       - rust-build-and-test
 
   dependency-review:
-    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
+    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
     needs:
       - audit
     with:
