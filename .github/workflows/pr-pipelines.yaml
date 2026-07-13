@@ -29,4 +29,7 @@ jobs:
     uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
 
   dependency-review:
-    uses: mbround18/gh-reusable/.github/workflows/dependency-review.yaml@main
+    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
+    with:
+      include_gitleaks: false
+      create_alerts: true
