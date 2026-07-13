@@ -1,0 +1,39 @@
+name: PR Pipelines
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  rust-build-and-test:
+    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      toolchain: "1.95"
+      components: clippy,rustfmt
+
+  audit:
+    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    needs:
+      - rust-build-and-test
+
+  dependency-review:
+    uses: mbround18/gh-reusable/.github/workflows/audit.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    needs:
+      - audit
+    with:
+      include_gitleaks: false
+      create_alerts: true

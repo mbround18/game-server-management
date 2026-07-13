@@ -12,6 +12,11 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
     github.ref_name }}
@@ -19,7 +24,11 @@ concurrency:
 
 jobs:
   rust:
-    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yml@main
+    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
   docker-compose:
