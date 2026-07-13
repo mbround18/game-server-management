@@ -1,4 +1,5 @@
 use serde::{Serialize, de::DeserializeOwned};
+use std::fmt::Write;
 
 /// Trait for types that require a custom INI header.
 ///
@@ -26,26 +27,27 @@ pub trait IniHeader {
 
 /// Helper: Format a serde_json number with up to 5 decimal places, trimming trailing zeros.
 fn format_number(n: &serde_json::Number) -> String {
-    if let Some(f) = n.as_f64() {
-        // Format to 5 decimals.
-        let s = format!("{f:.5}");
-        // Trim trailing zeros and possible trailing dot.
-        let s = s.trim_end_matches('0').trim_end_matches('.');
-        if s.is_empty() {
-            "0".to_owned()
-        } else {
-            s.to_owned()
-        }
-    } else {
-        n.to_string()
-    }
+    n.as_f64().map_or_else(
+        || n.to_string(),
+        |f| {
+            // Format to 5 decimals.
+            let s = format!("{f:.5}");
+            // Trim trailing zeros and possible trailing dot.
+            let s = s.trim_end_matches('0').trim_end_matches('.');
+            if s.is_empty() {
+                "0".to_owned()
+            } else {
+                s.to_owned()
+            }
+        },
+    )
 }
 
 /// Helper: Format a JSON value appropriately.
 fn format_json_value(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(s) => format!("\"{s}\""),
-        serde_json::Value::Bool(b) => format!("{b}"),
+        serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Number(n) => format_number(n),
         _ => format!("{value}"),
     }
@@ -54,33 +56,28 @@ fn format_json_value(value: &serde_json::Value) -> String {
 fn serialize_value(value: &serde_json::Value, indent: usize) -> String {
     let mut output = String::new();
     let indent_str = "\t".repeat(indent);
-    match value {
-        serde_json::Value::Object(map) => {
-            // Collect and sort keys alphabetically.
-            let mut entries: Vec<_> = map.iter().collect();
-            entries.sort_by_key(|(a, _)| *a);
-            for (key, val) in entries {
-                match val {
-                    serde_json::Value::Object(_) => {
-                        // Start a new nested block.
-                        output.push_str(&format!("{indent_str}{key}=(\n"));
-                        output.push_str(&serialize_value(val, indent + 1));
-                        output.push_str(&format!("{indent_str})\n"));
-                    }
-                    _ => {
-                        output.push_str(&format!(
-                            "{}{}={},\n",
-                            indent_str,
-                            key,
-                            format_json_value(val)
-                        ));
-                    }
-                }
+    if let serde_json::Value::Object(map) = value {
+        // Collect and sort keys alphabetically.
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort_by_key(|(a, _)| *a);
+        for (key, val) in entries {
+            output.push_str(&indent_str);
+            output.push_str(key);
+            if let serde_json::Value::Object(_) = val {
+                // Start a new nested block.
+                output.push_str("=(\n");
+                output.push_str(&serialize_value(val, indent + 1));
+                output.push_str(&indent_str);
+                output.push_str(")\n");
+            } else {
+                output.push('=');
+                output.push_str(&format_json_value(val));
+                output.push_str(",\n");
             }
         }
-        _ => {
-            output.push_str(&format!("{}{}", indent_str, format_json_value(value)));
-        }
+    } else {
+        output.push_str(&indent_str);
+        output.push_str(&format_json_value(value));
     }
     output
 }
@@ -172,7 +169,9 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
 
     // Write the header section.
     let section = T::ini_header();
-    output.push_str(&format!("[{section}]\n"));
+    output.push('[');
+    output.push_str(section);
+    output.push_str("]\n");
 
     // Convert the value into a serde_json::Value.
     let serialized = serde_json::to_value(value)?;
@@ -184,12 +183,13 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
             match val {
                 serde_json::Value::Object(_) => {
                     // For nested objects, use the recursive helper with indent level 1.
-                    output.push_str(&format!("{key}=(\n"));
+                    output.push_str(&key);
+                    output.push_str("=(\n");
                     output.push_str(&serialize_value(&val, 1));
                     output.push_str(")\n");
                 }
                 _ => {
-                    output.push_str(&format!("{}={},\n", key, format_json_value(&val)));
+                    let _ = writeln!(output, "{key}={},", format_json_value(&val));
                 }
             }
         }
@@ -225,11 +225,10 @@ pub fn parse_ini_value(value: &str) -> serde_json::Value {
     } else if let Ok(i) = trimmed.parse::<i64>() {
         serde_json::Value::Number(i.into())
     } else if let Ok(f) = trimmed.parse::<f64>() {
-        if let Some(n) = serde_json::Number::from_f64(f) {
-            serde_json::Value::Number(n)
-        } else {
-            serde_json::Value::String(trimmed.to_owned())
-        }
+        serde_json::Number::from_f64(f).map_or_else(
+            || serde_json::Value::String(trimmed.to_owned()),
+            serde_json::Value::Number,
+        )
     } else if trimmed.eq_ignore_ascii_case("true") {
         serde_json::Value::Bool(true)
     } else if trimmed.eq_ignore_ascii_case("false") {

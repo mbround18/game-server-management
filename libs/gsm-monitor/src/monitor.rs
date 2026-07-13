@@ -8,7 +8,7 @@ use crate::constants::INSTANCE_TARGET;
 use crate::rules::LogRules;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, trace};
@@ -47,10 +47,10 @@ impl Monitor {
         }
     }
 
-    pub fn run(&self, path: PathBuf) {
+    pub fn run(&self, path: &Path) {
         info!(target: INSTANCE_TARGET, "Starting watch on {}", path.display());
 
-        let file = match File::open(&path) {
+        let file = match File::open(path) {
             Ok(f) => f,
             Err(e) => {
                 error!("Failed to open log file {}: {}", path.display(), e);
@@ -76,7 +76,7 @@ impl Monitor {
                             "Log file {} was truncated/rotated. Re-opening.",
                             path.display()
                         );
-                        match File::open(&path) {
+                        match File::open(path) {
                             Ok(new_file) => {
                                 trace!("Successfully reopened log file");
                                 reader = BufReader::new(new_file);
@@ -90,7 +90,6 @@ impl Monitor {
                         }
                     }
                     thread::sleep(Duration::from_millis(100));
-                    continue;
                 }
                 Ok(_) => {
                     trace!("Read line from file: {line}");
@@ -99,7 +98,6 @@ impl Monitor {
                 Err(e) => {
                     error!("Error reading from {}: {}", path.display(), e);
                     thread::sleep(Duration::from_millis(100));
-                    continue;
                 }
             }
         }
@@ -117,7 +115,7 @@ pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
         .name(format!("log-monitor-{}", log_file.display()))
         .spawn(move || {
             trace!("Log monitor thread started");
-            monitor.run(log_file);
+            monitor.run(&log_file);
         });
 
     match spawn_result {
@@ -126,7 +124,7 @@ pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
     }
 }
 
-pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
+pub fn start_instance_log_monitor(working_dir: &Path, rules: LogRules) {
     let log_dir = working_dir.join("logs");
     let server_log = log_dir.join("server.log");
     let server_err = log_dir.join("server.err");

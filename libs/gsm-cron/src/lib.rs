@@ -45,13 +45,13 @@ fn normalize_schedule(schedule: &str) -> String {
 /// use gsm_cron::spawn_scheduled_job;
 ///
 /// // Schedule a job to run every minute.
-/// spawn_scheduled_job("0 * * * * *".to_string(), || {
+/// spawn_scheduled_job("0 * * * * *", || {
 ///     println!("This job runs every minute!");
 /// });
 /// ```
-pub fn spawn_scheduled_job(schedule_str: String, job: impl Fn() + Send + Sync + 'static) {
+pub fn spawn_scheduled_job(schedule_str: &str, job: impl Fn() + Send + Sync + 'static) {
     debug!("Attempting to parse schedule: {}", schedule_str);
-    let schedule = match Schedule::from_str(&schedule_str) {
+    let schedule = match Schedule::from_str(schedule_str) {
         Ok(s) => {
             debug!("Schedule parsed successfully: {:?}", s);
             s
@@ -127,7 +127,7 @@ where
         name_owned, adjusted_schedule
     );
 
-    spawn_scheduled_job(adjusted_schedule, move || {
+    spawn_scheduled_job(&adjusted_schedule, move || {
         info!("Executing job: {}", name_owned);
         job();
     });

@@ -9,7 +9,7 @@ use std::sync::{Arc, RwLock};
 use tracing::{error, info, trace, warn};
 
 /// The default ranking value for log rules.
-pub static DEFAULT_STOP_INT: i32 = 99999;
+pub static DEFAULT_STOP_INT: i32 = 99_999;
 
 /// A matcher function that determines whether a log line should trigger a rule.
 /// It takes a string slice and returns a boolean.
@@ -22,7 +22,8 @@ pub type Action = Arc<dyn Fn(&str) + Send + Sync>;
 /// Computes the default ranking for a new rule based on the current count of rules.
 fn default_ranking(current_count: usize) -> i32 {
     trace!("Computing default ranking for rule count: {current_count}");
-    current_count as i32 - DEFAULT_STOP_INT
+    let current_count = i32::try_from(current_count).unwrap_or(i32::MAX);
+    current_count - DEFAULT_STOP_INT
 }
 
 #[derive(Clone)]

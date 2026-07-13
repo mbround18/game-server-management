@@ -164,7 +164,7 @@ async fn main() {
             }
 
             // Start monitoring the instance log files.
-            gsm_monitor::start_instance_log_monitor(working_dir, rules);
+            gsm_monitor::start_instance_log_monitor(&working_dir, rules);
 
             if update_job || is_env_var_truthy("AUTO_UPDATE") {
                 debug!("Auto-update job condition met.");

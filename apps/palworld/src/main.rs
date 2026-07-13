@@ -156,7 +156,7 @@ async fn main() {
                 );
             }
 
-            gsm_monitor::start_instance_log_monitor(working_dir, rules);
+            gsm_monitor::start_instance_log_monitor(&working_dir, rules);
 
             if update_job || is_env_var_truthy("AUTO_UPDATE") {
                 let update_schedule = fetch_var("AUTO_UPDATE_SCHEDULE", "0 3 * * *");

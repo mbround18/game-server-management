@@ -249,7 +249,7 @@ async fn main() {
                 instance.config.working_dir.clone()
             };
 
-            gsm_monitor::start_instance_log_monitor(working_dir, gsm_monitor::LogRules::default());
+            gsm_monitor::start_instance_log_monitor(&working_dir, gsm_monitor::LogRules::default());
 
             if command.update_job || gsm_shared::is_env_var_truthy("AUTO_UPDATE") {
                 let schedule = gsm_shared::fetch_var("AUTO_UPDATE_SCHEDULE", "0 3 * * *");
