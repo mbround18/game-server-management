@@ -16,7 +16,7 @@ fs_extra = "1"
 thiserror = "2"
 regex = "1"
 reqwest = { version = "0", features = ["json", "default-tls", "blocking"] }
-gsm-shared = { path = "../gsm-shared" }
+gsm-shared = { path = "../gsm-shared", version = "0.1.0" }
 
 [lints]
 workspace = true
