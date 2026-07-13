@@ -27,9 +27,13 @@ jobs:
 
   audit:
     uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
+    needs:
+      - rust-build-and-test
 
   dependency-review:
     uses: mbround18/gh-reusable/.github/workflows/audit.yaml@main
+    needs:
+      - audit
     with:
       include_gitleaks: false
       create_alerts: true
