@@ -84,7 +84,10 @@ impl Instance {
             .working_dir
             .join("steamapps")
             .join(format!("appmanifest_{}.acf", self.config.app_id));
-        let appinfo_path: PathBuf = std::env::var("STEAM_APPINFO_PATH").map_or_else(|_| PathBuf::from("/home/steam/Steam/appcache/appinfo.vdf"), PathBuf::from);
+        let appinfo_path: PathBuf = std::env::var("STEAM_APPINFO_PATH").map_or_else(
+            |_| PathBuf::from("/home/steam/Steam/appcache/appinfo.vdf"),
+            PathBuf::from,
+        );
 
         update::update_is_available(&manifest_path, &appinfo_path).unwrap_or(false)
     }
@@ -163,15 +166,9 @@ mod tests {
     #[test]
     fn update_available_uses_environment_override() {
         let temp_dir = tempdir().unwrap();
-        let manifest_path = temp_dir
-            .path()
-            .join("steamapps/appmanifest_2278520.acf");
+        let manifest_path = temp_dir.path().join("steamapps/appmanifest_2278520.acf");
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-        fs::write(
-            &manifest_path,
-            r#""AppState" { "buildid" "1000" }"#,
-        )
-        .unwrap();
+        fs::write(&manifest_path, r#""AppState" { "buildid" "1000" }"#).unwrap();
 
         let appinfo_path = temp_dir.path().join("appinfo.vdf");
         fs::write(&appinfo_path, r#""appinfo" { "buildid" "2000" }"#).unwrap();

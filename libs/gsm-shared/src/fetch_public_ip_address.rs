@@ -132,7 +132,9 @@ mod tests {
 
     #[test]
     fn test_to_string_from_env_success() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let key_address = "ADDRESS";
         let key_port = "PORT";
         let expected_address = "192.168.1.100";
@@ -154,7 +156,9 @@ mod tests {
 
     #[test]
     fn test_to_string_from_env_rejects_invalid_values() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let key_address = "ADDRESS";
         let key_port = "PORT";
 
@@ -174,7 +178,9 @@ mod tests {
 
     #[test]
     fn test_fetch_public_address_uses_env_values() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let key_address = "ADDRESS";
         let key_port = "PORT";
 

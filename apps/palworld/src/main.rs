@@ -129,16 +129,28 @@ async fn main() {
 
                 rules.add_rule(
                     |line| line.contains("joined the server."),
-                    |line| if let Some(name) = utils::extract_player_joined_name(line) { send_notifications(StandardServerEvents::PlayerJoined(name))
-                    .expect("Failed to send webhook event! Invalid url?"); } else { error!("Failed to extract player name from:\n{line}") },
+                    |line| {
+                        if let Some(name) = utils::extract_player_joined_name(line) {
+                            send_notifications(StandardServerEvents::PlayerJoined(name))
+                                .expect("Failed to send webhook event! Invalid url?");
+                        } else {
+                            error!("Failed to extract player name from:\n{line}")
+                        }
+                    },
                     false,
                     None,
                 );
 
                 rules.add_rule(
                     |line| line.contains("left the server."),
-                    |line| if let Some(name) = utils::extract_player_left_name(line) { send_notifications(StandardServerEvents::PlayerLeft(name))
-                    .expect("Failed to send webhook event! Invalid url?"); } else { error!("Failed to extract player name from:\n{line}") },
+                    |line| {
+                        if let Some(name) = utils::extract_player_left_name(line) {
+                            send_notifications(StandardServerEvents::PlayerLeft(name))
+                                .expect("Failed to send webhook event! Invalid url?");
+                        } else {
+                            error!("Failed to extract player name from:\n{line}")
+                        }
+                    },
                     false,
                     None,
                 );

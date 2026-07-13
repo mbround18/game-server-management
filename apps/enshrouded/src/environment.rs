@@ -14,7 +14,9 @@ mod tests {
 
     #[test]
     fn name_uses_default_when_environment_is_missing() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe {
             std::env::remove_var("NAME");
         }

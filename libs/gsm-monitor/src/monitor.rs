@@ -144,8 +144,8 @@ pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn process_rules_applies_matching_rules_in_ranking_order() {

@@ -112,9 +112,7 @@ pub fn find_proton(version: Option<&str>) -> Result<ProtonConfig, ProtonError> {
     let glob_patterns = [
         "/home/steam/.steam/root/compatibilitytools.d/*Proton*/proton".to_owned(),
         "/home/steam/.steam/steam/compatibilitytools.d/*Proton*/proton".to_owned(),
-        format!(
-            "{home}/.local/share/Steam/compatibilitytools.d/*Proton*/proton"
-        ),
+        format!("{home}/.local/share/Steam/compatibilitytools.d/*Proton*/proton"),
         format!("{home}/.steam/root/compatibilitytools.d/*Proton*/proton"),
         format!("{home}/.steam/steam/compatibilitytools.d/*Proton*/proton"),
         format!("{home}/.steam/compatibilitytools.d/*Proton*/proton"),
@@ -208,7 +206,8 @@ fn create_proton_config<P: AsRef<Path>>(
     let path_str = path
         .as_ref()
         .to_str()
-        .ok_or(ProtonError::PathConversion)?.to_owned();
+        .ok_or(ProtonError::PathConversion)?
+        .to_owned();
 
     // Create basic environment variables
     let env_vars = Vec::new();
@@ -309,10 +308,9 @@ pub fn setup_prefix(config: &mut ProtonConfig, prefix_path: &str) -> Result<(), 
     config.prefix = Some(prefix_path.to_owned());
 
     // Add necessary environment variables
-    config.env_vars.push((
-        "STEAM_COMPAT_DATA_PATH".to_owned(),
-        prefix_path.to_owned(),
-    ));
+    config
+        .env_vars
+        .push(("STEAM_COMPAT_DATA_PATH".to_owned(), prefix_path.to_owned()));
     config.env_vars.push((
         "STEAM_COMPAT_CLIENT_INSTALL_PATH".to_owned(),
         prefix_path.to_owned(),
@@ -357,18 +355,14 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
         .env_vars
         .push(("SteamAppId".to_owned(), app_id.clone()));
     config.env_vars.push(("SteamGameId".to_owned(), app_id));
-    config
-        .env_vars
-        .push(("WINEPREFIX".to_owned(), pfx_path));
+    config.env_vars.push(("WINEPREFIX".to_owned(), pfx_path));
 
     // Setup Steam client paths
     let home = env::var("HOME").unwrap_or_else(|_| "/home/steam".to_owned());
     let steam_root = format!("{home}/.local/share/Steam");
     let steam_lib_paths = [
         format!("{steam_root}/linux64"),
-        format!(
-            "{steam_root}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu"
-        ),
+        format!("{steam_root}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu"),
         format!(
             "{steam_root}/steamapps/common/SteamLinuxRuntime/usr/lib/pressure-vessel/overrides/lib/x86_64-linux-gnu"
         ),
@@ -482,22 +476,33 @@ mod tests {
 
         setup_prefix(&mut config, prefix_path.to_str().unwrap()).unwrap();
 
-        assert_eq!(config.prefix.as_deref(), Some(prefix_path.to_str().unwrap()));
+        assert_eq!(
+            config.prefix.as_deref(),
+            Some(prefix_path.to_str().unwrap())
+        );
         assert!(prefix_path.exists());
         assert!(prefix_path.join("pfx").exists());
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "STEAM_COMPAT_DATA_PATH" && value == prefix_path.to_str().unwrap()));
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "STEAM_COMPAT_CLIENT_INSTALL_PATH" && value == prefix_path.to_str().unwrap()));
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "STEAM_COMPAT_DATA_PATH"
+                    && value == prefix_path.to_str().unwrap())
+        );
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "STEAM_COMPAT_CLIENT_INSTALL_PATH"
+                    && value == prefix_path.to_str().unwrap())
+        );
     }
 
     #[test]
     fn init_proton_env_populates_library_paths_and_defaults() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_home = tempdir().unwrap();
         let steam_root = temp_home.path().join(".local/share/Steam/linux64");
         fs::create_dir_all(&steam_root).unwrap();
@@ -511,7 +516,13 @@ mod tests {
 
         let mut config = ProtonConfig {
             path: "proton".to_owned(),
-            prefix: Some(temp_home.path().join("prefix").to_string_lossy().into_owned()),
+            prefix: Some(
+                temp_home
+                    .path()
+                    .join("prefix")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
             version: "GE-Proton-temp".to_owned(),
             app_id: "1234".to_owned(),
             env_vars: Vec::new(),
@@ -519,26 +530,36 @@ mod tests {
 
         init_proton_env(&mut config).unwrap();
 
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "STEAM_RUNTIME" && value == "1"));
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "SteamAppId" && value == "4242"));
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "SteamGameId" && value == "4242"));
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "WINEPREFIX" && value.ends_with("/pfx")));
-        assert!(config
-            .env_vars
-            .iter()
-            .any(|(key, value)| key == "LD_LIBRARY_PATH" && value.contains("/extra/lib")));
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "STEAM_RUNTIME" && value == "1")
+        );
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "SteamAppId" && value == "4242")
+        );
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "SteamGameId" && value == "4242")
+        );
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "WINEPREFIX" && value.ends_with("/pfx"))
+        );
+        assert!(
+            config
+                .env_vars
+                .iter()
+                .any(|(key, value)| key == "LD_LIBRARY_PATH" && value.contains("/extra/lib"))
+        );
 
         unsafe {
             std::env::remove_var("HOME");
@@ -549,7 +570,9 @@ mod tests {
 
     #[test]
     fn find_proton_locates_specific_version() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_home = tempdir().unwrap();
         let proton_dir = temp_home
             .path()
@@ -583,5 +606,4 @@ mod tests {
         assert_eq!(config.app_id, "0");
         assert!(config.env_vars.is_empty());
     }
-
 }

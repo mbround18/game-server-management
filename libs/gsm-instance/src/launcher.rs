@@ -119,8 +119,7 @@ fn find_windows_compatibility(
     launch_mode: &LaunchMode,
 ) -> Result<WindowsCompat, String> {
     debug!("Searching for Windows compatibility layers");
-    let force_proton = env::var("FORCE_PROTON")
-        .is_ok_and(|v| is_truthy(&v));
+    let force_proton = env::var("FORCE_PROTON").is_ok_and(|v| is_truthy(&v));
 
     if matches!(launch_mode, LaunchMode::Proton) {
         // Check if PROTON_VERSION is set
@@ -195,9 +194,7 @@ fn get_command_for_windows(
     // Try to find a suitable Windows compatibility layer
     let compat = find_windows_compatibility(app_id, launch_mode).map_err(|e| {
         // Check if we need to exit immediately due to FORCE_PROTON
-        if env::var("FORCE_PROTON")
-            .is_ok_and(|v| is_truthy(&v))
-        {
+        if env::var("FORCE_PROTON").is_ok_and(|v| is_truthy(&v)) {
             error!("FORCE_PROTON set but Proton setup failed: {}", e);
             return InstanceError::CommandExecutionError(format!(
                 "FORCE_PROTON set but Proton setup failed: {e}"
@@ -427,8 +424,7 @@ mod tests {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let temp_home = tempdir().unwrap().keep();
-        let proton_dir = temp_home
-            .join(".steam/steam/compatibilitytools.d/GE-Protontemp-test");
+        let proton_dir = temp_home.join(".steam/steam/compatibilitytools.d/GE-Protontemp-test");
         fs::create_dir_all(&proton_dir).unwrap();
         let proton_path = proton_dir.join("proton");
         write_executable_script(&proton_path, "#!/bin/sh\nexit 0\n");
@@ -457,7 +453,10 @@ mod tests {
 
         assert_eq!(command.get_program(), proton_path.as_os_str());
         assert_eq!(args, vec!["runinprefix", "game.exe", "-log"]);
-        assert_eq!(command.get_current_dir(), Some(config.working_dir.as_path()));
+        assert_eq!(
+            command.get_current_dir(),
+            Some(config.working_dir.as_path())
+        );
         assert!(config.stdout().exists());
         assert!(config.stderr().exists());
 

@@ -73,9 +73,7 @@ pub struct NotificationPayload<T: Serialize> {
 /// Checks that the webhook URL is non–empty and parses correctly.
 fn validate_webhook_url(webhook_url: &str) -> Result<(), NotificationError> {
     if webhook_url.is_empty() || reqwest::Url::parse(webhook_url).is_err() {
-        Err(NotificationError::InvalidWebhookUrl(
-            webhook_url.to_owned(),
-        ))
+        Err(NotificationError::InvalidWebhookUrl(webhook_url.to_owned()))
     } else {
         Ok(())
     }
@@ -378,11 +376,15 @@ mod tests {
         ));
 
         let registry = default_registry();
-        assert!(registry
-            .get_dispatcher("https://discord.com/api/webhooks/123/abc")
-            .is_some());
-        assert!(registry
-            .get_dispatcher("http://127.0.0.1:8080/webhook")
-            .is_some());
+        assert!(
+            registry
+                .get_dispatcher("https://discord.com/api/webhooks/123/abc")
+                .is_some()
+        );
+        assert!(
+            registry
+                .get_dispatcher("http://127.0.0.1:8080/webhook")
+                .is_some()
+        );
     }
 }

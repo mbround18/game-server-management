@@ -155,11 +155,7 @@ impl TryFrom<String> for ManagedMod {
             let constructed_url = format!(
                 "https://gcdn.thunderstore.io/live/repository/packages/{author}-{mod_name}-{version}.zip"
             );
-            Ok(Self::new(
-                &constructed_url,
-                PathBuf::new(),
-                PathBuf::new(),
-            ))
+            Ok(Self::new(&constructed_url, PathBuf::new(), PathBuf::new()))
         } else {
             Err(ModError::InvalidUrl)
         }

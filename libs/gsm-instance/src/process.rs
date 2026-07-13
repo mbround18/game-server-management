@@ -13,7 +13,11 @@ pub fn send_interrupt_to_pid(pid: u32) {
     let sys_pid = Pid::from(pid as usize);
     if let Some(process) = sys.process(sys_pid) {
         info!("Found process with PID: {}", pid);
-        if process.kill_with(Signal::Interrupt).is_some() { info!("Sent interrupt signal to PID: {}", pid) } else { error!("Failed to send interrupt signal to PID: {}", pid) }
+        if process.kill_with(Signal::Interrupt).is_some() {
+            info!("Sent interrupt signal to PID: {}", pid)
+        } else {
+            error!("Failed to send interrupt signal to PID: {}", pid)
+        }
     } else {
         debug!(
             "Process with PID {} not found (it may have already stopped)",

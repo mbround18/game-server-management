@@ -131,7 +131,11 @@ mod tests {
         rules.add_rule(|_| true, |_| {}, false, Some(20));
         rules.add_rule(|_| true, |_| {}, false, Some(5));
 
-        let rankings: Vec<i32> = rules.get_rules().into_iter().map(|rule| rule.ranking).collect();
+        let rankings: Vec<i32> = rules
+            .get_rules()
+            .into_iter()
+            .map(|rule| rule.ranking)
+            .collect();
         assert_eq!(rankings, vec![5, 20, DEFAULT_STOP_INT]);
     }
 

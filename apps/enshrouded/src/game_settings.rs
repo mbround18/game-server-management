@@ -375,7 +375,9 @@ mod tests {
 
     #[test]
     fn test_default_settings() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let settings = GameSettings::default();
@@ -387,7 +389,9 @@ mod tests {
 
     #[test]
     fn test_env_override_f32() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
@@ -402,7 +406,9 @@ mod tests {
 
     #[test]
     fn test_env_override_string() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
         unsafe {
             env::set_var("TOMBSTONE_MODE", "Nothing");
@@ -416,7 +422,9 @@ mod tests {
     fn test_new_config_creation_with_env() {
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
@@ -446,7 +454,9 @@ mod tests {
     fn test_load_or_create_config_saves_only_on_new_file() {
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");
@@ -477,7 +487,9 @@ mod tests {
         use std::path::PathBuf;
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");

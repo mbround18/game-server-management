@@ -61,8 +61,10 @@ fn process_cargo_toml(cargo_path: &Path, output_path: Option<&Path>) -> Result<(
         extract_env_vars_from_file(&file, &mut env_vars)?;
     }
 
-    let out_path =
-        output_path.map_or_else(|| project_dir.join("variables.json"), std::path::Path::to_path_buf);
+    let out_path = output_path.map_or_else(
+        || project_dir.join("variables.json"),
+        std::path::Path::to_path_buf,
+    );
     let json = serde_json::to_string_pretty(&env_vars)?;
     fs::write(&out_path, json)?;
     println!(

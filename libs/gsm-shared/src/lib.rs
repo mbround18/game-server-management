@@ -21,8 +21,10 @@ pub use environment::*;
 mod constants;
 
 pub fn get_working_dir() -> String {
-    let default_working_dir = env::current_dir()
-        .ok().map_or_else(|| String::from("."), |path| path.to_string_lossy().into_owned());
+    let default_working_dir = env::current_dir().ok().map_or_else(
+        || String::from("."),
+        |path| path.to_string_lossy().into_owned(),
+    );
     environment::fetch_var(constants::WORKING_DIR, default_working_dir.as_str())
 }
 
@@ -57,9 +59,9 @@ pub fn url_parse_file_type(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reqwest::Url;
     use std::fs;
     use tempfile::tempdir;
-    use reqwest::Url;
 
     #[test]
     fn hash_str() {
@@ -76,7 +78,10 @@ mod tests {
             std::env::set_var(constants::WORKING_DIR, temp_dir.path());
         }
 
-        assert_eq!(get_working_dir(), temp_dir.path().to_string_lossy().into_owned());
+        assert_eq!(
+            get_working_dir(),
+            temp_dir.path().to_string_lossy().into_owned()
+        );
 
         unsafe {
             std::env::remove_var(constants::WORKING_DIR);
@@ -91,11 +96,7 @@ mod tests {
 
         assert!(path_exists(file_path.to_str().unwrap()));
         assert!(!path_exists(
-            temp_dir
-                .path()
-                .join("missing.txt")
-                .to_str()
-                .unwrap()
+            temp_dir.path().join("missing.txt").to_str().unwrap()
         ));
 
         let url = Url::parse("https://example.com/path/to/archive.tar.gz").unwrap();
