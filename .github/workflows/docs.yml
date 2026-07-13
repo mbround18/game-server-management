@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.2, https://github.com/actions/checkout/releases/latest
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1, https://github.com/actions/checkout/releases/latest
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # latest release SHA, https://github.com/dtolnay/rust-toolchain/releases/latest
@@ -29,7 +29,7 @@ jobs:
           toolchain: stable
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v4.2.2, https://github.com/actions/cache/releases/latest
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0, https://github.com/actions/cache/releases/latest
         with:
           path: |
             ~/.cargo/bin/
