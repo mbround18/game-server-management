@@ -107,6 +107,7 @@ pub fn fetch_specific_release(version: &str) -> Result<ProtonRelease, ReleaseErr
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]

@@ -414,8 +414,8 @@ NightTimeSpeedRate=0.8,\n\
         assert_eq!(parse_ini_value("42"), Value::Number(42.into()));
         // Float
         assert_eq!(
-            parse_ini_value("3.14"),
-            Value::Number(serde_json::Number::from_f64(3.14).unwrap())
+            parse_ini_value("3.5"),
+            Value::Number(serde_json::Number::from_f64(3.5).unwrap())
         );
         // Booleans (case-insensitive)
         assert_eq!(parse_ini_value("true"), Value::Bool(true));

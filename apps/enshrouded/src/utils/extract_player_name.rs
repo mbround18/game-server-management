@@ -1,6 +1,37 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
+#[allow(clippy::expect_used)]
+static JOINED_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"Player\s+'([^']+)'").expect("joined-player regex should compile")
+});
+
+#[allow(clippy::expect_used)]
+static LEFT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"Remove Entity for Player\s+'([^']+)'")
+        .expect("left-player regex should compile")
+});
+
+/// Extracts the player name from a log line.
+///
+/// The log line is expected to contain a player name wrapped in single quotes,
+/// e.g., "[server] Player 'mbround18' logged in with Permissions:".
+pub fn extract_player_joined_name(log: &str) -> Option<String> {
+    JOINED_RE
+        .captures(log)
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
+}
+
+/// Extracts the player name from a log line when a player leaves.
+///
+/// The log line is expected to follow the format:
+/// `[server] Remove Player 'mbround18'`
+pub fn extract_player_left_name(log: &str) -> Option<String> {
+    LEFT_RE
+        .captures(log)
+        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,35 +83,4 @@ mod tests {
         assert_eq!(extract_player_left_name("[server] Server started."), None);
         assert_eq!(extract_player_left_name(""), None);
     }
-}
-
-#[allow(clippy::expect_used)]
-static JOINED_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"Player\s+'([^']+)'").expect("joined-player regex should compile")
-});
-
-#[allow(clippy::expect_used)]
-static LEFT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"Remove Entity for Player\s+'([^']+)'")
-        .expect("left-player regex should compile")
-});
-
-/// Extracts the player name from a log line.
-///
-/// The log line is expected to contain a player name wrapped in single quotes,
-/// e.g., "[server] Player 'mbround18' logged in with Permissions:".
-pub fn extract_player_joined_name(log: &str) -> Option<String> {
-    JOINED_RE
-        .captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
-}
-
-/// Extracts the player name from a log line when a player leaves.
-///
-/// The log line is expected to follow the format:
-/// `[server] Remove Player 'mbround18'`
-pub fn extract_player_left_name(log: &str) -> Option<String> {
-    LEFT_RE
-        .captures(log)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_owned()))
 }

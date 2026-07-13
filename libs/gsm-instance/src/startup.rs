@@ -35,6 +35,12 @@ fn ensure_log_dir(working_dir: &Path) -> Result<(), InstanceError> {
     Ok(())
 }
 
+/// Exposed for testing only.
+#[cfg(test)]
+pub(crate) fn ensure_log_dir_test(working_dir: &Path) -> Result<(), InstanceError> {
+    ensure_log_dir(working_dir)
+}
+
 /// Starts the game server as a daemonized process.
 ///
 /// This function orchestrates the launch of the game server. It first prepares
@@ -69,12 +75,6 @@ fn ensure_log_dir(working_dir: &Path) -> Result<(), InstanceError> {
 ///
 /// Returns an error when log setup, command launch, pid file writes, or immediate
 /// startup validation fails.
-/// Exposed for testing only.
-#[cfg(test)]
-pub(crate) fn ensure_log_dir_test(working_dir: &Path) -> Result<(), InstanceError> {
-    ensure_log_dir(working_dir)
-}
-
 pub fn start_daemonized(config: &InstanceConfig) -> Result<Child, InstanceError> {
     info!("Starting server as a daemonized process...");
     let working_dir = config.working_dir.clone();

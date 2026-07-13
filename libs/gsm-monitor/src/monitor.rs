@@ -141,6 +141,7 @@ pub fn start_instance_log_monitor(working_dir: &Path, rules: LogRules) {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
