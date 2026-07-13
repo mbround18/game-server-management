@@ -57,6 +57,9 @@ pub fn url_parse_file_type(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+    use reqwest::Url;
 
     #[test]
     fn hash_str() {
@@ -64,5 +67,44 @@ mod tests {
             get_md5_hash("abcdefghijklmnopqrstuvwxyz"),
             "c3fcd3d76192e4007dfb496cca67e13b"
         );
+    }
+
+    #[test]
+    fn working_dir_prefers_environment_override() {
+        let temp_dir = tempdir().unwrap();
+        unsafe {
+            std::env::set_var(constants::WORKING_DIR, temp_dir.path());
+        }
+
+        assert_eq!(get_working_dir(), temp_dir.path().to_string_lossy().into_owned());
+
+        unsafe {
+            std::env::remove_var(constants::WORKING_DIR);
+        }
+    }
+
+    #[test]
+    fn path_helpers_cover_basic_cases() {
+        let temp_dir = tempdir().unwrap();
+        let file_path = temp_dir.path().join("file.txt");
+        fs::write(&file_path, "hello").unwrap();
+
+        assert!(path_exists(file_path.to_str().unwrap()));
+        assert!(!path_exists(
+            temp_dir
+                .path()
+                .join("missing.txt")
+                .to_str()
+                .unwrap()
+        ));
+
+        let url = Url::parse("https://example.com/path/to/archive.tar.gz").unwrap();
+        assert_eq!(parse_file_name(&url, "default.txt"), "archive.tar.gz");
+        assert_eq!(
+            parse_file_name(&Url::parse("https://example.com/").unwrap(), "default.txt"),
+            "default.txt"
+        );
+        assert_eq!(url_parse_file_type("archive.tar.gz"), "gz");
+        assert_eq!(url_parse_file_type("no_extension"), "no_extension");
     }
 }

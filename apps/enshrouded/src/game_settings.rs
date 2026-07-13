@@ -414,6 +414,8 @@ mod tests {
 
     #[test]
     fn test_new_config_creation_with_env() {
+        use tempfile::TempDir;
+
         let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
@@ -421,11 +423,10 @@ mod tests {
             env::set_var("THREAT_BONUS", "5.0");
         }
 
-        let path = Path::new("./tmp/test_new_config.json");
-        fs::create_dir_all("./tmp").unwrap();
-        let _ = fs::remove_file(path);
+        let tmp_dir = TempDir::new().expect("create temp dir");
+        let path = tmp_dir.path().join("test_new_config.json");
 
-        let config = load_or_create_config(path);
+        let config = load_or_create_config(&path);
         assert!(path.exists());
         assert!((config.game_settings.threat_bonus - 5.0).abs() < f32::EPSILON);
 

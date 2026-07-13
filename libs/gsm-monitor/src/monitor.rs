@@ -140,3 +140,78 @@ pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
     start_monitor_in_thread(server_log, rules.clone());
     start_monitor_in_thread(server_err, rules);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    #[test]
+    fn process_rules_applies_matching_rules_in_ranking_order() {
+        let hits = Arc::new(AtomicUsize::new(0));
+        let rules = LogRules::new();
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |line| line.contains("match"),
+                move |_| {
+                    hits.fetch_add(1, Ordering::SeqCst);
+                },
+                false,
+                Some(5),
+            );
+        }
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |line| line.contains("match"),
+                move |_| {
+                    hits.fetch_add(10, Ordering::SeqCst);
+                },
+                true,
+                Some(20),
+            );
+        }
+
+        let monitor = Monitor::new(rules);
+        monitor.process_rules("match this line");
+        assert_eq!(hits.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn process_rules_stops_after_first_stop_rule() {
+        let hits = Arc::new(AtomicUsize::new(0));
+        let rules = LogRules::new();
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |_| true,
+                move |_| {
+                    hits.fetch_add(1, Ordering::SeqCst);
+                },
+                true,
+                Some(1),
+            );
+        }
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |_| true,
+                move |_| {
+                    hits.fetch_add(100, Ordering::SeqCst);
+                },
+                false,
+                Some(10),
+            );
+        }
+
+        let monitor = Monitor::new(rules);
+        monitor.process_rules("any line");
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
+}

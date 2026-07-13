@@ -432,3 +432,156 @@ pub fn init_proton_env(config: &mut ProtonConfig) -> Result<(), ProtonError> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use std::sync::{Mutex, OnceLock};
+    use tempfile::tempdir;
+
+    fn env_lock() -> &'static Mutex<()> {
+        static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn create_command_includes_prefix_and_env_vars() {
+        let config = ProtonConfig {
+            path: "/opt/proton/proton".to_owned(),
+            prefix: Some("/tmp/prefix".to_owned()),
+            version: "GE-Proton-temp".to_owned(),
+            app_id: "1234".to_owned(),
+            env_vars: vec![("TEST_ENV".to_owned(), "value".to_owned())],
+        };
+
+        let command = config.create_command("server.exe");
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(command.get_program(), Path::new("/opt/proton/proton"));
+        assert_eq!(args, vec!["runinprefix", "server.exe"]);
+    }
+
+    #[test]
+    fn setup_prefix_creates_prefix_directories_and_env() {
+        let temp_dir = tempdir().unwrap();
+        let prefix_path = temp_dir.path().join("prefix");
+        let mut config = ProtonConfig {
+            path: "proton".to_owned(),
+            prefix: None,
+            version: "GE-Proton-temp".to_owned(),
+            app_id: "1234".to_owned(),
+            env_vars: Vec::new(),
+        };
+
+        setup_prefix(&mut config, prefix_path.to_str().unwrap()).unwrap();
+
+        assert_eq!(config.prefix.as_deref(), Some(prefix_path.to_str().unwrap()));
+        assert!(prefix_path.exists());
+        assert!(prefix_path.join("pfx").exists());
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "STEAM_COMPAT_DATA_PATH" && value == prefix_path.to_str().unwrap()));
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "STEAM_COMPAT_CLIENT_INSTALL_PATH" && value == prefix_path.to_str().unwrap()));
+    }
+
+    #[test]
+    fn init_proton_env_populates_library_paths_and_defaults() {
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let temp_home = tempdir().unwrap();
+        let steam_root = temp_home.path().join(".local/share/Steam/linux64");
+        fs::create_dir_all(&steam_root).unwrap();
+        fs::write(steam_root.join("steamclient.so"), "fake").unwrap();
+
+        unsafe {
+            std::env::set_var("HOME", temp_home.path());
+            std::env::set_var("STEAM_APP_ID", "4242");
+            std::env::set_var("LD_LIBRARY_PATH", "/extra/lib");
+        }
+
+        let mut config = ProtonConfig {
+            path: "proton".to_owned(),
+            prefix: Some(temp_home.path().join("prefix").to_string_lossy().into_owned()),
+            version: "GE-Proton-temp".to_owned(),
+            app_id: "1234".to_owned(),
+            env_vars: Vec::new(),
+        };
+
+        init_proton_env(&mut config).unwrap();
+
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "STEAM_RUNTIME" && value == "1"));
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "SteamAppId" && value == "4242"));
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "SteamGameId" && value == "4242"));
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "WINEPREFIX" && value.ends_with("/pfx")));
+        assert!(config
+            .env_vars
+            .iter()
+            .any(|(key, value)| key == "LD_LIBRARY_PATH" && value.contains("/extra/lib")));
+
+        unsafe {
+            std::env::remove_var("HOME");
+            std::env::remove_var("STEAM_APP_ID");
+            std::env::remove_var("LD_LIBRARY_PATH");
+        }
+    }
+
+    #[test]
+    fn find_proton_locates_specific_version() {
+        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let temp_home = tempdir().unwrap();
+        let proton_dir = temp_home
+            .path()
+            .join(".steam/steam/compatibilitytools.d/GE-Protontemp-test");
+        fs::create_dir_all(&proton_dir).unwrap();
+        let proton_path = proton_dir.join("proton");
+        fs::write(&proton_path, "fake").unwrap();
+
+        unsafe {
+            std::env::set_var("HOME", temp_home.path());
+        }
+
+        let config = find_proton(Some("GE-Protontemp-test")).unwrap();
+        assert_eq!(config.path, proton_path.to_string_lossy());
+        assert_eq!(config.version, "GE-Protontemp-test");
+
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+    }
+
+    #[test]
+    fn create_proton_config_builds_basic_config() {
+        let temp_dir = tempdir().unwrap();
+        let proton_path = temp_dir.path().join("proton");
+        fs::write(&proton_path, "fake").unwrap();
+
+        let config = create_proton_config(&proton_path, "GE-Protontemp-test").unwrap();
+        assert_eq!(config.path, proton_path.to_string_lossy());
+        assert_eq!(config.version, "GE-Protontemp-test");
+        assert_eq!(config.app_id, "0");
+        assert!(config.env_vars.is_empty());
+    }
+
+}

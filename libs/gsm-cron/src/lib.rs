@@ -15,6 +15,15 @@ use tracing::{debug, error, info};
 
 pub use cron_loop::begin_cron_loop;
 
+fn normalize_schedule(schedule: &str) -> String {
+    let field_count = schedule.split_whitespace().count();
+    if field_count == 5 {
+        format!("0 {schedule}")
+    } else {
+        schedule.to_owned()
+    }
+}
+
 /// Spawns a job to run on a cron-like schedule asynchronously.
 ///
 /// This function takes a cron schedule string and a closure, and spawns a `tokio` task
@@ -100,21 +109,18 @@ where
     F: Fn() + Send + Sync + 'static,
 {
     let name_owned = name.to_owned();
-    let field_count = schedule.split_whitespace().count();
-    let adjusted_schedule = if field_count == 5 {
-        let new_schedule = format!("0 {schedule}");
+    let adjusted_schedule = normalize_schedule(schedule);
+    if schedule.split_whitespace().count() == 5 {
         debug!(
             "Adjusted schedule from 5-field to 6-field for job '{}': {} (original: {})",
-            name_owned, new_schedule, schedule
+            name_owned, adjusted_schedule, schedule
         );
-        new_schedule
     } else {
         debug!(
             "Schedule for job '{}' is already 6-field: {}",
             name_owned, schedule
         );
-        schedule.to_owned()
-    };
+    }
 
     info!(
         "Registering job '{}' with schedule: {}",
@@ -125,4 +131,19 @@ where
         info!("Executing job: {}", name_owned);
         job();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_schedule;
+
+    #[test]
+    fn normalize_schedule_prepends_seconds_field_for_five_part_cron() {
+        assert_eq!(normalize_schedule("* * * * *"), "0 * * * * *");
+    }
+
+    #[test]
+    fn normalize_schedule_leaves_six_part_cron_unchanged() {
+        assert_eq!(normalize_schedule("0 * * * * *"), "0 * * * * *");
+    }
 }

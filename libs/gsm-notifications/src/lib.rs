@@ -264,3 +264,125 @@ pub fn send_notification<T: Serialize>(
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use serde_json::json;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    fn read_http_request(mut stream: std::net::TcpStream) -> String {
+        let mut buffer = Vec::new();
+        let mut chunk = [0_u8; 1024];
+
+        loop {
+            let read = stream.read(&mut chunk).unwrap();
+            if read == 0 {
+                break;
+            }
+
+            buffer.extend_from_slice(&chunk[..read]);
+
+            if let Some(header_end) = buffer.windows(4).position(|window| window == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&buffer[..header_end + 4]);
+                let content_length = headers
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: "))
+                    .and_then(|value| value.trim().parse::<usize>().ok())
+                    .unwrap_or(0);
+                let total_len = header_end + 4 + content_length;
+
+                while buffer.len() < total_len {
+                    let read = stream.read(&mut chunk).unwrap();
+                    if read == 0 {
+                        break;
+                    }
+                    buffer.extend_from_slice(&chunk[..read]);
+                }
+
+                break;
+            }
+        }
+
+        String::from_utf8(buffer).unwrap()
+    }
+
+    fn spawn_test_server() -> (String, mpsc::Receiver<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let request = read_http_request(stream.try_clone().unwrap());
+            tx.send(request).unwrap();
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .unwrap();
+        });
+
+        (format!("http://{address}/webhook"), rx)
+    }
+
+    #[test]
+    fn generic_dispatcher_posts_notification_payload() {
+        let (webhook_url, rx) = spawn_test_server();
+
+        send_notification(
+            &webhook_url,
+            "INFO",
+            "hello world",
+            Some(json!({"score": 7})),
+        )
+        .unwrap();
+
+        let request = rx.recv().unwrap();
+        assert!(request.starts_with("POST /webhook HTTP/1.1"));
+        assert!(request.contains("\"notification_type\":\"INFO\""));
+        assert!(request.contains("\"message\":\"hello world\""));
+        assert!(request.contains("\"score\":7"));
+    }
+
+    #[test]
+    fn discord_dispatcher_formats_embed_payload() {
+        let (webhook_url, rx) = spawn_test_server();
+        let dispatcher = DiscordDispatcher;
+
+        dispatcher
+            .send_payload(&webhook_url, "ALERT", "discord alert", None)
+            .unwrap();
+
+        let request = rx.recv().unwrap();
+        assert!(request.contains("\"content\":\"🔔 ALERT\""));
+        assert!(request.contains("\"title\":\"ALERT\""));
+        assert!(request.contains("\"description\":\"discord alert\""));
+        assert_eq!(get_discord_color("ALERT"), 0xFA113D);
+        assert_eq!(get_discord_color("INFO"), 0x4BB543);
+        assert_eq!(get_discord_color("custom"), 0x007F66);
+    }
+
+    #[test]
+    fn registry_and_validation_choose_expected_dispatcher() {
+        assert!(matches!(
+            send_notification::<()>("", "INFO", "ignored", None),
+            Err(NotificationError::InvalidWebhookUrl(_))
+        ));
+
+        let registry = default_registry();
+        assert!(registry
+            .get_dispatcher("https://discord.com/api/webhooks/123/abc")
+            .is_some());
+        assert!(registry
+            .get_dispatcher("http://127.0.0.1:8080/webhook")
+            .is_some());
+    }
+}

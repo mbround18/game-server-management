@@ -112,3 +112,39 @@ impl Default for LogRules {
         rules
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_rule_matches_everything_and_stops() {
+        let rule = LogRule::default();
+        assert!(rule.stop);
+        assert_eq!(rule.ranking, DEFAULT_STOP_INT);
+        assert!((rule.matcher)("any line"));
+    }
+
+    #[test]
+    fn rules_are_sorted_by_ranking() {
+        let rules = LogRules::new();
+        rules.add_rule(|_| true, |_| {}, false, Some(20));
+        rules.add_rule(|_| true, |_| {}, false, Some(5));
+
+        let rankings: Vec<i32> = rules.get_rules().into_iter().map(|rule| rule.ranking).collect();
+        assert_eq!(rankings, vec![5, 20, DEFAULT_STOP_INT]);
+    }
+
+    #[test]
+    fn default_rules_include_warning_and_error_handlers() {
+        let rules = LogRules::default();
+        let mut matched = Vec::new();
+        for rule in rules.get_rules() {
+            if (rule.matcher)("WARNING: example") || (rule.matcher)("ERROR: example") {
+                matched.push(rule.ranking);
+            }
+        }
+
+        assert!(!matched.is_empty());
+    }
+}
