@@ -25,6 +25,10 @@ concurrency:
 jobs:
   rust:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
   docker-compose:

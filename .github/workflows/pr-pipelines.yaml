@@ -17,6 +17,10 @@ concurrency:
 jobs:
   rust-build-and-test:
     uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     with:
       toolchain: "1.95"
       components: clippy,rustfmt
