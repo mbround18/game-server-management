@@ -72,8 +72,8 @@ mod tests {
     }
 
     #[test]
-    fn working_dir_prefers_environment_override() {
-        let temp_dir = tempdir().unwrap();
+    fn working_dir_prefers_environment_override() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = tempdir()?;
         unsafe {
             std::env::set_var(constants::WORKING_DIR, temp_dir.path());
         }
@@ -86,26 +86,31 @@ mod tests {
         unsafe {
             std::env::remove_var(constants::WORKING_DIR);
         }
+
+        Ok(())
     }
 
     #[test]
-    fn path_helpers_cover_basic_cases() {
-        let temp_dir = tempdir().unwrap();
+    fn path_helpers_cover_basic_cases() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = tempdir()?;
         let file_path = temp_dir.path().join("file.txt");
-        fs::write(&file_path, "hello").unwrap();
+        fs::write(&file_path, "hello")?;
 
-        assert!(path_exists(file_path.to_str().unwrap()));
+        let file_path = file_path.to_string_lossy();
+        assert!(path_exists(&file_path));
         assert!(!path_exists(
-            temp_dir.path().join("missing.txt").to_str().unwrap()
+            temp_dir.path().join("missing.txt").to_string_lossy().as_ref()
         ));
 
-        let url = Url::parse("https://example.com/path/to/archive.tar.gz").unwrap();
+        let url = Url::parse("https://example.com/path/to/archive.tar.gz")?;
         assert_eq!(parse_file_name(&url, "default.txt"), "archive.tar.gz");
         assert_eq!(
-            parse_file_name(&Url::parse("https://example.com/").unwrap(), "default.txt"),
+            parse_file_name(&Url::parse("https://example.com/")?, "default.txt"),
             "default.txt"
         );
         assert_eq!(url_parse_file_type("archive.tar.gz"), "gz");
         assert_eq!(url_parse_file_type("no_extension"), "no_extension");
+
+        Ok(())
     }
 }
