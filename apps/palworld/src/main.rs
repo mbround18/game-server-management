@@ -134,7 +134,7 @@ async fn main() {
                             send_notifications(StandardServerEvents::PlayerJoined(name))
                                 .expect("Failed to send webhook event! Invalid url?");
                         } else {
-                            error!("Failed to extract player name from:\n{line}")
+                            error!("Failed to extract player name from:\n{line}");
                         }
                     },
                     false,
@@ -148,7 +148,7 @@ async fn main() {
                             send_notifications(StandardServerEvents::PlayerLeft(name))
                                 .expect("Failed to send webhook event! Invalid url?");
                         } else {
-                            error!("Failed to extract player name from:\n{line}")
+                            error!("Failed to extract player name from:\n{line}");
                         }
                     },
                     false,
