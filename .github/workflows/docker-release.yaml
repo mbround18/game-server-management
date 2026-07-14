@@ -21,7 +21,7 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
     github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   rust:
@@ -35,6 +35,20 @@ jobs:
   publish-crates:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     uses: mbround18/gh-reusable/.github/workflows/publish.yaml@main
+    strategy:
+      fail-fast: false
+      matrix:
+        source:
+          - libs/env-parse
+          - libs/gsm-backup
+          - libs/gsm-instance
+          - libs/gsm-monitor
+          - libs/gsm-shared
+          - libs/ini-derive
+          - libs/gsm-cron
+          - libs/gsm-mod-manager
+          - libs/gsm-notifications
+          - libs/gsm-serde
     with:
       target: rust-crate
       registry: crates.io
