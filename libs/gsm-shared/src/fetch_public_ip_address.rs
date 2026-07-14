@@ -123,9 +123,18 @@ mod tests {
 
     use super::*;
     use std::env;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     #[test]
     fn test_to_string_from_env_success() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let key_address = "ADDRESS";
         let key_port = "PORT";
         let expected_address = "192.168.1.100";
@@ -143,5 +152,55 @@ mod tests {
             env::remove_var(key_address);
             env::remove_var(key_port);
         }
+    }
+
+    #[test]
+    fn test_to_string_from_env_rejects_invalid_values() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let key_address = "ADDRESS";
+        let key_port = "PORT";
+
+        unsafe {
+            env::set_var(key_address, "");
+            env::set_var(key_port, "not-a-port");
+        }
+
+        let ip_config = IPConfig::default();
+        assert!(ip_config.to_string_from_env().is_err());
+
+        unsafe {
+            env::remove_var(key_address);
+            env::remove_var(key_port);
+        }
+    }
+
+    #[test]
+    fn test_fetch_public_address_uses_env_values() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let key_address = "ADDRESS";
+        let key_port = "PORT";
+
+        unsafe {
+            env::set_var(key_address, "10.0.0.12");
+            env::set_var(key_port, "25565");
+        }
+
+        let config = fetch_public_address();
+        assert_eq!(config.to_string(), "10.0.0.12:25565");
+
+        unsafe {
+            env::remove_var(key_address);
+            env::remove_var(key_port);
+        }
+    }
+
+    #[test]
+    fn test_display_formats_ip_and_port() {
+        let config = IPConfig::new("1.2.3.4".to_owned(), 1234);
+        assert_eq!(config.to_string(), "1.2.3.4:1234");
     }
 }

@@ -275,7 +275,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_update_server_passes_force_windows_and_extra_args() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let args_path = temp_dir.path().join("args.txt");
         let script_path = temp_dir.path().join("fake-steamcmd.sh");
@@ -312,7 +314,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_update_server_returns_error_when_command_fails() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let script_path = temp_dir.path().join("failing-steamcmd.sh");
         write_executable_script(&script_path, "#!/bin/sh\nexit 1\n");

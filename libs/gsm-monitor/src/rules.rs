@@ -9,7 +9,7 @@ use std::sync::{Arc, RwLock};
 use tracing::{error, info, trace, warn};
 
 /// The default ranking value for log rules.
-pub static DEFAULT_STOP_INT: i32 = 99999;
+pub static DEFAULT_STOP_INT: i32 = 99_999;
 
 /// A matcher function that determines whether a log line should trigger a rule.
 /// It takes a string slice and returns a boolean.
@@ -22,7 +22,8 @@ pub type Action = Arc<dyn Fn(&str) + Send + Sync>;
 /// Computes the default ranking for a new rule based on the current count of rules.
 fn default_ranking(current_count: usize) -> i32 {
     trace!("Computing default ranking for rule count: {current_count}");
-    current_count as i32 - DEFAULT_STOP_INT
+    let current_count = i32::try_from(current_count).unwrap_or(i32::MAX);
+    current_count - DEFAULT_STOP_INT
 }
 
 #[derive(Clone)]
@@ -110,5 +111,45 @@ impl Default for LogRules {
             None,
         );
         rules
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_rule_matches_everything_and_stops() {
+        let rule = LogRule::default();
+        assert!(rule.stop);
+        assert_eq!(rule.ranking, DEFAULT_STOP_INT);
+        assert!((rule.matcher)("any line"));
+    }
+
+    #[test]
+    fn rules_are_sorted_by_ranking() {
+        let rules = LogRules::new();
+        rules.add_rule(|_| true, |_| {}, false, Some(20));
+        rules.add_rule(|_| true, |_| {}, false, Some(5));
+
+        let rankings: Vec<i32> = rules
+            .get_rules()
+            .into_iter()
+            .map(|rule| rule.ranking)
+            .collect();
+        assert_eq!(rankings, vec![5, 20, DEFAULT_STOP_INT]);
+    }
+
+    #[test]
+    fn default_rules_include_warning_and_error_handlers() {
+        let rules = LogRules::default();
+        let mut matched = Vec::new();
+        for rule in rules.get_rules() {
+            if (rule.matcher)("WARNING: example") || (rule.matcher)("ERROR: example") {
+                matched.push(rule.ranking);
+            }
+        }
+
+        assert!(!matched.is_empty());
     }
 }

@@ -84,7 +84,10 @@ impl Instance {
             .working_dir
             .join("steamapps")
             .join(format!("appmanifest_{}.acf", self.config.app_id));
-        let appinfo_path: PathBuf = std::env::var("STEAM_APPINFO_PATH").map_or_else(|_| PathBuf::from("/home/steam/Steam/appcache/appinfo.vdf"), PathBuf::from);
+        let appinfo_path: PathBuf = std::env::var("STEAM_APPINFO_PATH").map_or_else(
+            |_| PathBuf::from("/home/steam/Steam/appcache/appinfo.vdf"),
+            PathBuf::from,
+        );
 
         update::update_is_available(&manifest_path, &appinfo_path).unwrap_or(false)
     }
@@ -132,5 +135,74 @@ impl Instance {
         // Optionally, insert a delay if needed.
         self.start()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn pid_reads_pid_file_and_reports_missing_files() {
+        let temp_dir = tempdir().unwrap();
+        let pid_path = temp_dir.path().join("instance.pid");
+        fs::write(&pid_path, "12345\n").unwrap();
+
+        let instance = Instance::new(InstanceConfig {
+            working_dir: temp_dir.path().to_path_buf(),
+            ..InstanceConfig::default()
+        });
+
+        assert_eq!(instance.pid().unwrap(), 12345);
+
+        fs::remove_file(&pid_path).unwrap();
+        assert!(instance.pid().is_err());
+    }
+
+    #[test]
+    fn update_available_uses_environment_override() {
+        let temp_dir = tempdir().unwrap();
+        let manifest_path = temp_dir.path().join("steamapps/appmanifest_2278520.acf");
+        fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+        fs::write(&manifest_path, r#""AppState" { "buildid" "1000" }"#).unwrap();
+
+        let appinfo_path = temp_dir.path().join("appinfo.vdf");
+        fs::write(&appinfo_path, r#""appinfo" { "buildid" "2000" }"#).unwrap();
+
+        unsafe {
+            std::env::set_var("STEAM_APPINFO_PATH", &appinfo_path);
+        }
+
+        let instance = Instance::new(InstanceConfig {
+            app_id: 2_278_520,
+            working_dir: temp_dir.path().to_path_buf(),
+            ..InstanceConfig::default()
+        });
+
+        assert!(instance.update_available());
+
+        unsafe {
+            std::env::remove_var("STEAM_APPINFO_PATH");
+        }
+    }
+
+    #[test]
+    fn stop_removes_pid_file_when_present() {
+        let temp_dir = tempdir().unwrap();
+        let pid_path = temp_dir.path().join("instance.pid");
+        fs::write(&pid_path, "999999\n").unwrap();
+
+        let instance = Instance::new(InstanceConfig {
+            command: "nonexistent-command".to_owned(),
+            working_dir: temp_dir.path().to_path_buf(),
+            ..InstanceConfig::default()
+        });
+
+        instance.stop().unwrap();
+        assert!(!pid_path.exists());
     }
 }

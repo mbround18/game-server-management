@@ -577,6 +577,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "tempfile",
  "tera",
 ]
 
@@ -823,6 +824,7 @@ name = "gsm-monitor"
 version = "0.1.0"
 dependencies = [
  "log",
+ "tempfile",
  "tracing",
 ]
 

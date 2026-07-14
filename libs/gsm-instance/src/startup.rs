@@ -35,6 +35,12 @@ fn ensure_log_dir(working_dir: &Path) -> Result<(), InstanceError> {
     Ok(())
 }
 
+/// Exposed for testing only.
+#[cfg(test)]
+pub(crate) fn ensure_log_dir_test(working_dir: &Path) -> Result<(), InstanceError> {
+    ensure_log_dir(working_dir)
+}
+
 /// Starts the game server as a daemonized process.
 ///
 /// This function orchestrates the launch of the game server. It first prepares
@@ -106,5 +112,49 @@ pub fn start_daemonized(config: &InstanceConfig) -> Result<Child, InstanceError>
             Err(e) => Err(InstanceError::CommandExecutionError(e.to_string())),
         },
         Err(e) => Err(InstanceError::CommandExecutionError(e.to_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use crate::config::{InstanceConfig, LaunchMode};
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn ensure_log_dir_creates_logs_subdirectory() {
+        let temp = tempdir().unwrap();
+        ensure_log_dir_test(temp.path()).unwrap();
+        assert!(temp.path().join("logs").is_dir());
+    }
+
+    #[test]
+    fn ensure_log_dir_fails_when_path_is_a_file() {
+        let temp = tempdir().unwrap();
+        let blocking = temp.path().join("logs");
+        fs::write(&blocking, "block").unwrap();
+
+        let result = ensure_log_dir_test(temp.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn start_daemonized_errors_when_log_dir_cannot_be_created() {
+        let temp = tempdir().unwrap();
+        // Block the logs directory with a regular file.
+        let blocking = temp.path().join("logs");
+        fs::write(&blocking, "block").unwrap();
+
+        let config = InstanceConfig {
+            command: "/bin/echo".to_owned(),
+            working_dir: temp.path().to_path_buf(),
+            launch_mode: LaunchMode::Native,
+            ..InstanceConfig::default()
+        };
+
+        assert!(start_daemonized(&config).is_err());
     }
 }

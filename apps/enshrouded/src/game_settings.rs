@@ -8,6 +8,7 @@ use std::path::Path;
 /// Represents game settings in the server configuration.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase", default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct GameSettings {
     /// Multiplier for player health (default: 1.0)
     pub player_health_factor: f32,
@@ -191,6 +192,7 @@ impl GameSettings {
 /// - `reserved_slots`: Number of reserved slots for this group.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase", default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct UserGroup {
     pub name: String,
     pub password: String,
@@ -307,20 +309,23 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
 
         if let Some(parent) = path.parent() {
             let prefix = path.file_stem().unwrap_or_default().to_string_lossy();
-            let mut backups: Vec<_> =
-                match std::fs::read_dir(parent).or_else(|_| std::fs::read_dir(".")) {
-                    Ok(entries) => entries
-                        .filter_map(std::result::Result::ok)
-                        .filter(|entry| {
-                            entry
-                                .file_name()
-                                .to_string_lossy()
-                                .starts_with(&format!("{prefix}.bak."))
-                                && entry.file_name().to_string_lossy().ends_with(".json")
-                        })
-                        .collect(),
-                    Err(_) => Vec::new(),
-                };
+            let mut backups: Vec<_> = std::fs::read_dir(parent)
+                .or_else(|_| std::fs::read_dir("."))
+                .map_or_else(
+                    |_| Vec::new(),
+                    |entries| {
+                        entries
+                            .filter_map(std::result::Result::ok)
+                            .filter(|entry| {
+                                entry
+                                    .file_name()
+                                    .to_string_lossy()
+                                    .starts_with(&format!("{prefix}.bak."))
+                                    && entry.file_name().to_string_lossy().ends_with(".json")
+                            })
+                            .collect()
+                    },
+                );
 
             if backups.len() > 5 {
                 backups.sort_by_key(|entry| {
@@ -345,16 +350,19 @@ pub fn load_or_create_config(path: &Path) -> ServerConfig {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::float_cmp, clippy::unwrap_used)]
+    #![allow(
+        clippy::float_cmp,
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing
+    )]
 
     use super::*;
     use std::env;
     use std::fs;
-    use std::sync::Mutex;
+    use std::sync::{LazyLock, Mutex};
 
-    lazy_static::lazy_static! {
-        static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-    }
+    static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     fn clear_env_vars() {
         let vars = [
@@ -375,7 +383,9 @@ mod tests {
 
     #[test]
     fn test_default_settings() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let settings = GameSettings::default();
@@ -387,7 +397,9 @@ mod tests {
 
     #[test]
     fn test_env_override_f32() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
@@ -402,7 +414,9 @@ mod tests {
 
     #[test]
     fn test_env_override_string() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
         unsafe {
             env::set_var("TOMBSTONE_MODE", "Nothing");
@@ -414,18 +428,21 @@ mod tests {
 
     #[test]
     fn test_new_config_creation_with_env() {
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        use tempfile::TempDir;
+
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         unsafe {
             env::set_var("THREAT_BONUS", "5.0");
         }
 
-        let path = Path::new("./tmp/test_new_config.json");
-        fs::create_dir_all("./tmp").unwrap();
-        let _ = fs::remove_file(path);
+        let tmp_dir = TempDir::new().expect("create temp dir");
+        let path = tmp_dir.path().join("test_new_config.json");
 
-        let config = load_or_create_config(path);
+        let config = load_or_create_config(&path);
         assert!(path.exists());
         assert!((config.game_settings.threat_bonus - 5.0).abs() < f32::EPSILON);
 
@@ -445,7 +462,9 @@ mod tests {
     fn test_load_or_create_config_saves_only_on_new_file() {
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");
@@ -476,7 +495,9 @@ mod tests {
         use std::path::PathBuf;
         use tempfile::TempDir;
 
-        let _lock = TEST_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_env_vars();
 
         let tmp_dir = TempDir::new().expect("create temp dir");

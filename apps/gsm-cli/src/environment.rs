@@ -99,7 +99,9 @@ mod tests {
 
     #[test]
     fn install_args_reads_split_env_values() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("INSTALL_ARGS", "+beta staging");

@@ -47,20 +47,37 @@ use crate::process::ServerProcess;
 /// This function does not explicitly panic, but underlying `ServerProcess` operations
 /// might in extreme cases of system resource exhaustion.
 pub fn blocking_shutdown(executable: &str) {
+    blocking_shutdown_with_delay(executable, Duration::from_secs(5));
+}
+
+fn blocking_shutdown_with_delay(executable: &str, delay: Duration) {
     let mut server_process = ServerProcess::new();
     info!("Sending interrupt signal to server processes...");
     server_process.send_interrupt(executable);
-    // Wait a short while for processes to begin termination.
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(delay);
     loop {
         let mut sp = server_process.clone();
         debug!("Checking if server processes are still running...");
         if sp.are_processes_running(executable) {
-            debug!("Server processes still running. Waiting for 5 seconds...");
-            thread::sleep(Duration::from_secs(5));
+            debug!("Server processes still running. Waiting...");
+            thread::sleep(delay);
         } else {
             info!("Server processes have been stopped successfully!");
             break;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn blocking_shutdown_exits_when_no_processes_match() {
+        // Use a name that will never match a real process; the loop exits immediately.
+        blocking_shutdown_with_delay(
+            "gsm-test-nonexistent-process-xyz123abc",
+            Duration::from_millis(10),
+        );
     }
 }

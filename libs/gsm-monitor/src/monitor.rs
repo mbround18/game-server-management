@@ -8,7 +8,7 @@ use crate::constants::INSTANCE_TARGET;
 use crate::rules::LogRules;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, trace};
@@ -47,10 +47,10 @@ impl Monitor {
         }
     }
 
-    pub fn run(&self, path: PathBuf) {
+    pub fn run(&self, path: &Path) {
         info!(target: INSTANCE_TARGET, "Starting watch on {}", path.display());
 
-        let file = match File::open(&path) {
+        let file = match File::open(path) {
             Ok(f) => f,
             Err(e) => {
                 error!("Failed to open log file {}: {}", path.display(), e);
@@ -76,7 +76,7 @@ impl Monitor {
                             "Log file {} was truncated/rotated. Re-opening.",
                             path.display()
                         );
-                        match File::open(&path) {
+                        match File::open(path) {
                             Ok(new_file) => {
                                 trace!("Successfully reopened log file");
                                 reader = BufReader::new(new_file);
@@ -90,7 +90,6 @@ impl Monitor {
                         }
                     }
                     thread::sleep(Duration::from_millis(100));
-                    continue;
                 }
                 Ok(_) => {
                     trace!("Read line from file: {line}");
@@ -99,7 +98,6 @@ impl Monitor {
                 Err(e) => {
                     error!("Error reading from {}: {}", path.display(), e);
                     thread::sleep(Duration::from_millis(100));
-                    continue;
                 }
             }
         }
@@ -117,7 +115,7 @@ pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
         .name(format!("log-monitor-{}", log_file.display()))
         .spawn(move || {
             trace!("Log monitor thread started");
-            monitor.run(log_file);
+            monitor.run(&log_file);
         });
 
     match spawn_result {
@@ -126,7 +124,7 @@ pub fn start_monitor_in_thread(log_file: PathBuf, rules: LogRules) {
     }
 }
 
-pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
+pub fn start_instance_log_monitor(working_dir: &Path, rules: LogRules) {
     let log_dir = working_dir.join("logs");
     let server_log = log_dir.join("server.log");
     let server_err = log_dir.join("server.err");
@@ -139,4 +137,148 @@ pub fn start_instance_log_monitor(working_dir: PathBuf, rules: LogRules) {
 
     start_monitor_in_thread(server_log, rules.clone());
     start_monitor_in_thread(server_err, rules);
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use std::fs;
+    use std::sync::atomic::AtomicBool;
+    use tempfile::tempdir;
+
+    #[test]
+    fn monitor_new_creates_instance() {
+        let rules = LogRules::new();
+        let _monitor = Monitor::new(rules);
+    }
+
+    #[test]
+    fn run_returns_early_when_file_does_not_exist() {
+        let rules = LogRules::new();
+        let monitor = Monitor::new(rules);
+        // A path that does not exist: run() should open-fail and return immediately.
+        monitor.run(std::path::Path::new(
+            "/tmp/gsm-test-nonexistent-log-file-xyz.log",
+        ));
+    }
+
+    #[test]
+    fn run_processes_lines_appended_to_log_file() {
+        let temp = tempdir().unwrap();
+        let log_path = temp.path().join("server.log");
+        fs::write(&log_path, "").unwrap();
+
+        let hit = Arc::new(AtomicBool::new(false));
+        let hit_clone = Arc::clone(&hit);
+
+        let rules = LogRules::new();
+        rules.add_rule(
+            |line| line.contains("SENTINEL"),
+            move |_| {
+                hit_clone.store(true, Ordering::SeqCst);
+            },
+            true,
+            None,
+        );
+
+        let monitor = Monitor::new(rules);
+        let path = log_path.clone();
+        let handle = thread::spawn(move || monitor.run(&path));
+
+        thread::sleep(Duration::from_millis(50));
+        fs::write(&log_path, "line with SENTINEL keyword\n").unwrap();
+        thread::sleep(Duration::from_millis(300));
+
+        assert!(hit.load(Ordering::SeqCst), "rule action should have fired");
+        drop(handle); // thread runs forever; let it be reaped by the process
+    }
+
+    #[test]
+    fn start_monitor_in_thread_does_not_panic_for_missing_file() {
+        let temp = tempdir().unwrap();
+        let missing = temp.path().join("no-such-file.log");
+        let rules = LogRules::new();
+        // Should spawn a thread that opens/fails and exits cleanly.
+        start_monitor_in_thread(missing, rules);
+        thread::sleep(Duration::from_millis(50));
+    }
+
+    #[test]
+    fn start_instance_log_monitor_spawns_without_panic() {
+        let temp = tempdir().unwrap();
+        start_instance_log_monitor(temp.path(), LogRules::default());
+        thread::sleep(Duration::from_millis(50));
+    }
+
+    #[test]
+    fn process_rules_applies_matching_rules_in_ranking_order() {
+        let hits = Arc::new(AtomicUsize::new(0));
+        let rules = LogRules::new();
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |line| line.contains("match"),
+                move |_| {
+                    hits.fetch_add(1, Ordering::SeqCst);
+                },
+                false,
+                Some(5),
+            );
+        }
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |line| line.contains("match"),
+                move |_| {
+                    hits.fetch_add(10, Ordering::SeqCst);
+                },
+                true,
+                Some(20),
+            );
+        }
+
+        let monitor = Monitor::new(rules);
+        monitor.process_rules("match this line");
+        assert_eq!(hits.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn process_rules_stops_after_first_stop_rule() {
+        let hits = Arc::new(AtomicUsize::new(0));
+        let rules = LogRules::new();
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |_| true,
+                move |_| {
+                    hits.fetch_add(1, Ordering::SeqCst);
+                },
+                true,
+                Some(1),
+            );
+        }
+
+        {
+            let hits = Arc::clone(&hits);
+            rules.add_rule(
+                |_| true,
+                move |_| {
+                    hits.fetch_add(100, Ordering::SeqCst);
+                },
+                false,
+                Some(10),
+            );
+        }
+
+        let monitor = Monitor::new(rules);
+        monitor.process_rules("any line");
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
 }

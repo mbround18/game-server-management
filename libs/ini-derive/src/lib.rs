@@ -43,9 +43,14 @@ pub fn ini_serialize(input: TokenStream) -> TokenStream {
         }
     }
 
-    let header_value = header_value.expect(
-        "INIHeader attribute is required with a name, e.g. #[INIHeader(name = \"/Script/Pal.PalGameWorldSettings\")]",
-    );
+    let Some(header_value) = header_value else {
+        return syn::Error::new_spanned(
+            &name,
+            "INIHeader attribute is required with a name, e.g. #[INIHeader(name = \"/Script/Pal.PalGameWorldSettings\")]",
+        )
+        .to_compile_error()
+        .into();
+    };
 
     let expanded = quote! {
         impl IniHeader for #name {

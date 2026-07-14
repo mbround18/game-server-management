@@ -249,7 +249,7 @@ async fn main() {
                 instance.config.working_dir.clone()
             };
 
-            gsm_monitor::start_instance_log_monitor(working_dir, gsm_monitor::LogRules::default());
+            gsm_monitor::start_instance_log_monitor(&working_dir, gsm_monitor::LogRules::default());
 
             if command.update_job || gsm_shared::is_env_var_truthy("AUTO_UPDATE") {
                 let schedule = gsm_shared::fetch_var("AUTO_UPDATE_SCHEDULE", "0 3 * * *");
@@ -287,7 +287,7 @@ fn unwrap_or_exit<T>(result: Result<T, clap::Error>) -> T {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
     use super::*;
     use std::env;
@@ -313,7 +313,9 @@ mod tests {
 
     #[test]
     fn cli_values_override_environment_values() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("APP_ID", "1234");
@@ -349,7 +351,9 @@ mod tests {
 
     #[test]
     fn executable_is_required_for_runtime_commands() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             env::set_var("APP_ID", "2278520");
@@ -381,7 +385,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn install_uses_env_values_when_cli_values_are_missing() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let args_path = temp_dir.path().join("args.txt");
         let script_path = temp_dir.path().join("fake-steamcmd.sh");
@@ -430,6 +436,211 @@ mod tests {
             env::remove_var("APP_ID");
             env::remove_var("INSTALL_PATH");
             env::remove_var("INSTALL_ARGS");
+        }
+    }
+
+    #[test]
+    fn resolve_uses_cli_launch_args_over_env() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::set_var("APP_ID", "1234");
+            env::set_var("INSTALL_PATH", "/tmp/from-env");
+            env::set_var("EXECUTABLE", "server");
+            env::set_var("LAUNCH_ARGS", "--env-arg");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: false,
+            launch_mode: None,
+            executable: None,
+            install_args: vec![],
+            launch_args: vec!["--cli-arg".to_owned()],
+        };
+
+        let resolved = options.resolve(false).unwrap();
+        assert_eq!(resolved.launch_args, vec!["--cli-arg"]);
+
+        unsafe {
+            env::remove_var("APP_ID");
+            env::remove_var("INSTALL_PATH");
+            env::remove_var("EXECUTABLE");
+            env::remove_var("LAUNCH_ARGS");
+        }
+    }
+
+    #[test]
+    fn resolve_falls_back_to_env_launch_args_when_cli_is_empty() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::set_var("APP_ID", "1234");
+            env::set_var("INSTALL_PATH", "/tmp/from-env");
+            env::set_var("LAUNCH_ARGS", "--from-env");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: false,
+            launch_mode: None,
+            executable: None,
+            install_args: vec![],
+            launch_args: vec![],
+        };
+
+        let resolved = options.resolve(false).unwrap();
+        assert_eq!(resolved.launch_args, vec!["--from-env"]);
+
+        unsafe {
+            env::remove_var("APP_ID");
+            env::remove_var("INSTALL_PATH");
+            env::remove_var("LAUNCH_ARGS");
+        }
+    }
+
+    #[test]
+    fn resolve_force_windows_sets_wine_launch_mode() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::set_var("APP_ID", "9999");
+            env::set_var("INSTALL_PATH", "/tmp/wine-test");
+            env::remove_var("LAUNCH_MODE");
+            env::remove_var("FORCE_WINDOWS");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: true,
+            launch_mode: None,
+            executable: None,
+            install_args: vec![],
+            launch_args: vec![],
+        };
+
+        let resolved = options.resolve(false).unwrap();
+        assert!(matches!(resolved.launch_mode, gsm_instance::config::LaunchMode::Wine));
+
+        unsafe {
+            env::remove_var("APP_ID");
+            env::remove_var("INSTALL_PATH");
+        }
+    }
+
+    #[test]
+    fn resolve_uses_cli_launch_mode_when_provided() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::set_var("APP_ID", "9999");
+            env::set_var("INSTALL_PATH", "/tmp/mode-test");
+            env::remove_var("LAUNCH_MODE");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: false,
+            launch_mode: Some("proton".to_owned()),
+            executable: None,
+            install_args: vec![],
+            launch_args: vec![],
+        };
+
+        let resolved = options.resolve(false).unwrap();
+        assert!(matches!(
+            resolved.launch_mode,
+            gsm_instance::config::LaunchMode::Proton
+        ));
+
+        unsafe {
+            env::remove_var("APP_ID");
+            env::remove_var("INSTALL_PATH");
+        }
+    }
+
+    #[test]
+    fn into_instance_config_maps_all_fields() {
+        let opts = ResolvedOptions {
+            app_id: 42,
+            install_path: std::path::PathBuf::from("/srv/game"),
+            executable: Some("server.exe".to_owned()),
+            force_windows: true,
+            launch_mode: gsm_instance::config::LaunchMode::Wine,
+            install_args: vec!["-validate".to_owned()],
+            launch_args: vec!["-log".to_owned()],
+        };
+
+        let config = opts.into_instance_config();
+        assert_eq!(config.app_id, 42);
+        assert_eq!(config.command, "server.exe");
+        assert!(config.force_windows);
+        assert_eq!(config.working_dir, std::path::PathBuf::from("/srv/game"));
+        assert_eq!(config.install_args, vec!["-validate"]);
+        assert_eq!(config.launch_args, vec!["-log"]);
+    }
+
+    #[test]
+    fn resolve_errors_when_app_id_is_missing() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::remove_var("APP_ID");
+            env::remove_var("INSTALL_PATH");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: false,
+            launch_mode: None,
+            executable: None,
+            install_args: vec![],
+            launch_args: vec![],
+        };
+
+        assert!(options.resolve(false).is_err());
+    }
+
+    #[test]
+    fn resolve_errors_when_install_path_is_missing() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            env::set_var("APP_ID", "1234");
+            env::remove_var("INSTALL_PATH");
+        }
+
+        let options = SharedOptions {
+            app_id: None,
+            install_path: None,
+            force_windows: false,
+            launch_mode: None,
+            executable: None,
+            install_args: vec![],
+            launch_args: vec![],
+        };
+
+        assert!(options.resolve(false).is_err());
+
+        unsafe {
+            env::remove_var("APP_ID");
         }
     }
 }

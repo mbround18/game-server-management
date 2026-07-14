@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   rust:
-    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@main
     permissions:
       contents: read
       pages: write
@@ -34,7 +34,7 @@ jobs:
 
   publish-crates:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    uses: mbround18/gh-reusable/.github/workflows/publish.yaml@ee2a5260549a69a99cbbb25a386aee9a4e628777
+    uses: mbround18/gh-reusable/.github/workflows/publish.yaml@main
     with:
       target: rust-crate
       registry: crates.io
