@@ -42,6 +42,7 @@ enum Commands {
     },
 }
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -49,7 +50,7 @@ async fn main() {
 
     let cli = Cli::parse();
     let instance_config = InstanceConfig {
-        app_id: 2394010, // Palworld Steam App ID
+        app_id: 2_394_010, // Palworld Steam App ID
         name: name(),
         command: "/bin/bash".to_owned(),
         install_args: vec![],
@@ -60,11 +61,11 @@ async fn main() {
                 args.push(format!("-publicip={public_ip}"));
             }
 
-            if let Some(public_port) = env::var("PORT").ok().or(Some("8211".to_owned())) {
+            if let Some(public_port) = env::var("PORT").ok().or_else(|| Some("8211".to_owned())) {
                 args.push(format!("-port={public_port}"));
             }
 
-            if let Some(public_port) = env::var("PUBLIC_PORT").ok().or(Some("8211".to_owned())) {
+            if let Some(public_port) = env::var("PUBLIC_PORT").ok().or_else(|| Some("8211".to_owned())) {
                 args.push(format!("-publicport={public_port}"));
             }
 
@@ -120,8 +121,9 @@ async fn main() {
                 rules.add_rule(
                     |line| line.contains("Running Palworld dedicated server on"),
                     |_| {
-                        send_notifications(StandardServerEvents::Started)
-                            .expect("Failed to send webhook event! Invalid url?");
+                        if let Err(e) = send_notifications(StandardServerEvents::Started) {
+                            warn!("Failed to send webhook notification: {e}");
+                        }
                     },
                     false,
                     None,
@@ -129,22 +131,40 @@ async fn main() {
 
                 rules.add_rule(
                     |line| line.contains("joined the server."),
-                    |line| if let Some(name) = utils::extract_player_joined_name(line) { send_notifications(StandardServerEvents::PlayerJoined(name))
-                    .expect("Failed to send webhook event! Invalid url?"); } else { error!("Failed to extract player name from:\n{line}") },
+                    |line| {
+                        if let Some(name) = utils::extract_player_joined_name(line) {
+                            if let Err(e) =
+                                send_notifications(StandardServerEvents::PlayerJoined(name))
+                            {
+                                warn!("Failed to send webhook notification: {e}");
+                            }
+                        } else {
+                            error!("Failed to extract player name from:\n{line}");
+                        }
+                    },
                     false,
                     None,
                 );
 
                 rules.add_rule(
                     |line| line.contains("left the server."),
-                    |line| if let Some(name) = utils::extract_player_left_name(line) { send_notifications(StandardServerEvents::PlayerLeft(name))
-                    .expect("Failed to send webhook event! Invalid url?"); } else { error!("Failed to extract player name from:\n{line}") },
+                    |line| {
+                        if let Some(name) = utils::extract_player_left_name(line) {
+                            if let Err(e) =
+                                send_notifications(StandardServerEvents::PlayerLeft(name))
+                            {
+                                warn!("Failed to send webhook notification: {e}");
+                            }
+                        } else {
+                            error!("Failed to extract player name from:\n{line}");
+                        }
+                    },
                     false,
                     None,
                 );
             }
 
-            gsm_monitor::start_instance_log_monitor(working_dir, rules);
+            gsm_monitor::start_instance_log_monitor(&working_dir, rules);
 
             if update_job || is_env_var_truthy("AUTO_UPDATE") {
                 let update_schedule = fetch_var("AUTO_UPDATE_SCHEDULE", "0 3 * * *");
@@ -182,9 +202,10 @@ async fn main() {
             if let Err(e) = inst.stop() {
                 error!("Failed to stop: {}", e);
             } else {
-                if env::var("WEBHOOK_URL").is_ok() {
-                    send_notifications(StandardServerEvents::Stopped)
-                        .expect("Failed to send webhook event! Invalid url?");
+                if env::var("WEBHOOK_URL").is_ok()
+                    && let Err(e) = send_notifications(StandardServerEvents::Stopped)
+                {
+                    warn!("Failed to send webhook notification: {e}");
                 }
                 debug!("Server stopped successfully.");
             }

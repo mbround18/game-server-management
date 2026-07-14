@@ -83,7 +83,9 @@ mod tests {
 
     #[test]
     fn steamcmd_command_defaults_to_steamcmd_binary() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::remove_var("STEAMCMD_PATH");
@@ -95,7 +97,9 @@ mod tests {
 
     #[test]
     fn steamcmd_command_uses_env_override_when_present() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         unsafe {
             std::env::set_var("STEAMCMD_PATH", "/tmp/custom-steamcmd");

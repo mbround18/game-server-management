@@ -1,4 +1,10 @@
 use regex::Regex;
+use std::sync::LazyLock;
+
+#[allow(clippy::expect_used)]
+static MOD_STRING_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^([^-\s]+)-([^-]+)-([\d\.]+)$").expect("mod string regex should compile")
+});
 
 /// Parses a mod string into its author, mod name, and version components.
 ///
@@ -10,8 +16,7 @@ use regex::Regex;
 ///
 /// An `Option` containing a tuple with the author, mod name, and version if parsing is successful; `None` otherwise.
 pub fn parse_mod_string(mod_string: &str) -> Option<(&str, &str, &str)> {
-    let re = Regex::new(r"^([^-\s]+)-([^-]+)-([\d\.]+)$").expect("mod string regex should compile");
-    re.captures(mod_string).and_then(|caps| {
+    MOD_STRING_RE.captures(mod_string).and_then(|caps| {
         if caps.len() == 4 {
             Some((
                 caps.get(1)?.as_str(),
@@ -26,6 +31,8 @@ pub fn parse_mod_string(mod_string: &str) -> Option<(&str, &str, &str)> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::*;
 
     #[test]

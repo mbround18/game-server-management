@@ -15,6 +15,15 @@ use tracing::{debug, error, info};
 
 pub use cron_loop::begin_cron_loop;
 
+fn normalize_schedule(schedule: &str) -> String {
+    let field_count = schedule.split_whitespace().count();
+    if field_count == 5 {
+        format!("0 {schedule}")
+    } else {
+        schedule.to_owned()
+    }
+}
+
 /// Spawns a job to run on a cron-like schedule asynchronously.
 ///
 /// This function takes a cron schedule string and a closure, and spawns a `tokio` task
@@ -36,13 +45,13 @@ pub use cron_loop::begin_cron_loop;
 /// use gsm_cron::spawn_scheduled_job;
 ///
 /// // Schedule a job to run every minute.
-/// spawn_scheduled_job("0 * * * * *".to_string(), || {
+/// spawn_scheduled_job("0 * * * * *", || {
 ///     println!("This job runs every minute!");
 /// });
 /// ```
-pub fn spawn_scheduled_job(schedule_str: String, job: impl Fn() + Send + Sync + 'static) {
+pub fn spawn_scheduled_job(schedule_str: &str, job: impl Fn() + Send + Sync + 'static) {
     debug!("Attempting to parse schedule: {}", schedule_str);
-    let schedule = match Schedule::from_str(&schedule_str) {
+    let schedule = match Schedule::from_str(schedule_str) {
         Ok(s) => {
             debug!("Schedule parsed successfully: {:?}", s);
             s
@@ -100,29 +109,66 @@ where
     F: Fn() + Send + Sync + 'static,
 {
     let name_owned = name.to_owned();
-    let field_count = schedule.split_whitespace().count();
-    let adjusted_schedule = if field_count == 5 {
-        let new_schedule = format!("0 {schedule}");
+    let adjusted_schedule = normalize_schedule(schedule);
+    if schedule.split_whitespace().count() == 5 {
         debug!(
             "Adjusted schedule from 5-field to 6-field for job '{}': {} (original: {})",
-            name_owned, new_schedule, schedule
+            name_owned, adjusted_schedule, schedule
         );
-        new_schedule
     } else {
         debug!(
             "Schedule for job '{}' is already 6-field: {}",
             name_owned, schedule
         );
-        schedule.to_owned()
-    };
+    }
 
     info!(
         "Registering job '{}' with schedule: {}",
         name_owned, adjusted_schedule
     );
 
-    spawn_scheduled_job(adjusted_schedule, move || {
+    spawn_scheduled_job(&adjusted_schedule, move || {
         info!("Executing job: {}", name_owned);
         job();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_schedule_prepends_seconds_field_for_five_part_cron() {
+        assert_eq!(normalize_schedule("* * * * *"), "0 * * * * *");
+    }
+
+    #[test]
+    fn normalize_schedule_leaves_six_part_cron_unchanged() {
+        assert_eq!(normalize_schedule("0 * * * * *"), "0 * * * * *");
+    }
+
+    #[tokio::test]
+    async fn spawn_scheduled_job_with_invalid_schedule_does_not_panic() {
+        // Invalid schedule must be silently rejected (error logged, no panic).
+        spawn_scheduled_job("not-a-cron-expression", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_accepts_six_field_schedule_without_panic() {
+        register_job("test-6field", "0 59 23 31 12 *", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_adjusts_five_field_schedule_without_panic() {
+        register_job("test-5field", "59 23 31 12 *", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    #[tokio::test]
+    async fn register_job_with_invalid_schedule_does_not_panic() {
+        register_job("test-invalid", "garbage schedule", || {});
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
 }

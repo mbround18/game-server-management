@@ -151,7 +151,9 @@ mod tests {
 
     #[test]
     fn add_additional_args_ignores_missing_or_blank_values() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut args = Vec::new();
 
         unsafe {
@@ -173,7 +175,9 @@ mod tests {
 
     #[test]
     fn add_additional_args_trims_wrapping_quotes() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut args = Vec::new();
 
         unsafe {
@@ -191,7 +195,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn install_passes_expected_args_to_steamcmd() {
-        let _lock = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let temp_dir = tempdir().unwrap();
         let args_path = temp_dir.path().join("args.txt");
         let script_path = temp_dir.path().join("fake-steamcmd.sh");
@@ -212,9 +218,16 @@ mod tests {
 
         let recorded_args = fs::read_to_string(&args_path).unwrap();
         let lines: Vec<&str> = recorded_args.lines().collect();
-        assert_eq!(lines.first().copied(), Some("+@sSteamCmdForcePlatformType windows"));
-        let expected_force_install_dir = format!("+force_install_dir {}", temp_dir.path().display());
-        assert_eq!(lines.get(1).copied(), Some(expected_force_install_dir.as_str()));
+        assert_eq!(
+            lines.first().copied(),
+            Some("+@sSteamCmdForcePlatformType windows")
+        );
+        let expected_force_install_dir =
+            format!("+force_install_dir {}", temp_dir.path().display());
+        assert_eq!(
+            lines.get(1).copied(),
+            Some(expected_force_install_dir.as_str())
+        );
         assert_eq!(lines.get(2).copied(), Some("+login anonymous"));
         assert_eq!(lines.get(3).copied(), Some("+app_update 2278520 validate"));
         assert_eq!(lines.get(4).copied(), Some("+download_depot 123 456"));

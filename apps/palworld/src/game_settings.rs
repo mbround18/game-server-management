@@ -6,7 +6,7 @@ use std::fs::create_dir_all;
 use std::path::Path;
 use std::{env, fs};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Preset {
     Casual,
@@ -22,6 +22,7 @@ pub struct Settings {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct GameSettings {
     // Core gameplay rates
     #[serde(rename = "Difficulty")]
@@ -435,13 +436,14 @@ impl GameSettings {
                 self.collection_object_hp_rate = 1.0;
                 self.collection_object_respawn_speed_rate = 2.0;
                 self.enemy_drop_item_rate = 0.7;
-                self.death_penalty = "Drop all Items and all Pals on Team".to_owned();
+                "Drop all Items and all Pals on Team".clone_into(&mut self.death_penalty);
             }
         }
     }
 }
 
 impl Default for GameSettings {
+    #[allow(clippy::too_many_lines)]
     fn default() -> Self {
         // Start with Normal preset as our base.
         let mut settings = Self::normal();
@@ -792,12 +794,9 @@ mod tests {
     use std::env;
     use std::fs;
     use std::path::Path;
-    use std::sync::Mutex;
+    use std::sync::{LazyLock, Mutex};
 
-    // Define a global mutex to prevent race conditions in tests
-    lazy_static::lazy_static! {
-        static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-    }
+    static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     const TEST_DIR: &str = "./tmp/tests";
 

@@ -119,8 +119,7 @@ fn find_windows_compatibility(
     launch_mode: &LaunchMode,
 ) -> Result<WindowsCompat, String> {
     debug!("Searching for Windows compatibility layers");
-    let force_proton = env::var("FORCE_PROTON")
-        .is_ok_and(|v| is_truthy(&v));
+    let force_proton = env::var("FORCE_PROTON").is_ok_and(|v| is_truthy(&v));
 
     if matches!(launch_mode, LaunchMode::Proton) {
         // Check if PROTON_VERSION is set
@@ -195,9 +194,7 @@ fn get_command_for_windows(
     // Try to find a suitable Windows compatibility layer
     let compat = find_windows_compatibility(app_id, launch_mode).map_err(|e| {
         // Check if we need to exit immediately due to FORCE_PROTON
-        if env::var("FORCE_PROTON")
-            .is_ok_and(|v| is_truthy(&v))
-        {
+        if env::var("FORCE_PROTON").is_ok_and(|v| is_truthy(&v)) {
             error!("FORCE_PROTON set but Proton setup failed: {}", e);
             return InstanceError::CommandExecutionError(format!(
                 "FORCE_PROTON set but Proton setup failed: {e}"
@@ -333,6 +330,7 @@ mod tests {
 
     use super::*;
     use crate::config::InstanceConfig;
+    use std::fs;
     use tempfile::tempdir;
 
     // On Unix systems, use "/bin/sleep" as a dummy command.
@@ -354,6 +352,16 @@ mod tests {
     #[cfg(windows)]
     fn dummy_arg() -> String {
         "1".to_string()
+    }
+
+    #[cfg(unix)]
+    fn write_executable_script(path: &std::path::Path, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+
+        fs::write(path, body).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
     }
 
     /// Creates a basic InstanceConfig for testing the launcher.
@@ -406,5 +414,168 @@ mod tests {
         assert!(!is_truthy("0"));
         assert!(!is_truthy("false"));
         assert!(!is_truthy("no"));
+    }
+
+    #[test]
+    fn launch_server_fails_when_log_dir_is_blocked_by_a_file() {
+        let temp = tempdir().unwrap();
+        // Pre-create a regular file where the logs dir would go.
+        let logs_path = temp.path().join("logs");
+        fs::write(&logs_path, "block").unwrap();
+
+        let config = InstanceConfig {
+            command: dummy_command(),
+            working_dir: temp.path().to_path_buf(),
+            launch_mode: LaunchMode::Native,
+            ..InstanceConfig::default()
+        };
+
+        assert!(launch_server(&config).is_err());
+    }
+
+    #[test]
+    fn launch_server_with_launch_args_appends_args_to_command() {
+        let config = InstanceConfig {
+            command: dummy_command(),
+            launch_args: vec!["--arg1".to_owned(), "--arg2".to_owned()],
+            launch_mode: LaunchMode::Native,
+            ..test_config(LaunchMode::Native)
+        };
+
+        let cmd = launch_server(&config).unwrap();
+        let args: Vec<_> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert!(args.contains(&"--arg1".to_owned()));
+        assert!(args.contains(&"--arg2".to_owned()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn windows_compat_none_returns_error_when_no_compat_layer() {
+        let _lock = crate::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let temp_home = tempdir().unwrap().keep();
+        unsafe {
+            std::env::set_var("HOME", &temp_home);
+            // Ensure FORCE_PROTON is not set so we don't get a different error.
+            std::env::remove_var("FORCE_PROTON");
+            std::env::remove_var("PROTON_VERSION");
+        }
+
+        // Use Wine mode; if wine is not on this machine the compat layer is None
+        // and launch_server must return an error.
+        if which::which("wine64").is_ok() || which::which("wine").is_ok() {
+            // Wine is present — skip rather than give a false result.
+            unsafe {
+                std::env::remove_var("HOME");
+            }
+            return;
+        }
+
+        let config = InstanceConfig {
+            command: "game.exe".to_owned(),
+            working_dir: temp_home.join("server"),
+            launch_mode: LaunchMode::Wine,
+            ..InstanceConfig::default()
+        };
+
+        let result = launch_server(&config);
+        assert!(
+            result.is_err(),
+            "expected error when no Windows compat layer is available"
+        );
+
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launch_server_uses_proton_when_available() {
+        let _lock = crate::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let temp_home = tempdir().unwrap().keep();
+        let proton_dir = temp_home.join(".steam/steam/compatibilitytools.d/GE-Protontemp-test");
+        fs::create_dir_all(&proton_dir).unwrap();
+        let proton_path = proton_dir.join("proton");
+        write_executable_script(&proton_path, "#!/bin/sh\nexit 0\n");
+
+        unsafe {
+            std::env::set_var("HOME", &temp_home);
+            std::env::set_var("PROTON_VERSION", "temp-test");
+        }
+
+        let config = InstanceConfig {
+            app_id: 123456,
+            name: "TestServer".to_owned(),
+            command: "game.exe".to_owned(),
+            install_args: vec![],
+            launch_args: vec![String::from("-log")],
+            launch_mode: LaunchMode::Proton,
+            working_dir: temp_home.join("server"),
+            force_windows: false,
+        };
+
+        let command = launch_server(&config).unwrap();
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(command.get_program(), proton_path.as_os_str());
+        assert_eq!(args, vec!["runinprefix", "game.exe", "-log"]);
+        assert_eq!(
+            command.get_current_dir(),
+            Some(config.working_dir.as_path())
+        );
+        assert!(config.stdout().exists());
+        assert!(config.stderr().exists());
+
+        unsafe {
+            std::env::remove_var("HOME");
+            std::env::remove_var("PROTON_VERSION");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launch_server_errors_when_force_proton_is_missing() {
+        let _lock = crate::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let temp_home = tempdir().unwrap().keep();
+        unsafe {
+            std::env::set_var("HOME", &temp_home);
+            std::env::set_var("FORCE_PROTON", "1");
+            std::env::set_var("PROTON_VERSION", "missing-version-xyz");
+        }
+
+        let config = InstanceConfig {
+            app_id: 123456,
+            name: "TestServer".to_owned(),
+            command: "game.exe".to_owned(),
+            install_args: vec![],
+            launch_args: vec![],
+            launch_mode: LaunchMode::Proton,
+            working_dir: temp_home.join("server"),
+            force_windows: false,
+        };
+
+        let error = launch_server(&config).unwrap_err();
+        assert!(matches!(error, InstanceError::CommandExecutionError(_)));
+
+        unsafe {
+            std::env::remove_var("HOME");
+            std::env::remove_var("FORCE_PROTON");
+            std::env::remove_var("PROTON_VERSION");
+        }
     }
 }

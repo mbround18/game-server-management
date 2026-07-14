@@ -19,7 +19,7 @@ use tokio::time::sleep;
 /// ```rust,no_run
 /// use gsm_cron::{register_job, begin_cron_loop};
 ///
-/// #[tokio::main]
+/// #[tokio::main(flavor = "current_thread")]
 /// async fn main() {
 ///     // Register a job to run every minute.
 ///     register_job("heartbeat", "* * * * *", || {
@@ -38,5 +38,22 @@ pub async fn begin_cron_loop() {
                 // integrate with signal handling for graceful shutdown.
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn begin_cron_loop_runs_indefinitely_until_cancelled() {
+        // The loop never terminates on its own; a short timeout proves it is running.
+        let result =
+            tokio::time::timeout(Duration::from_millis(50), begin_cron_loop()).await;
+        assert!(
+            result.is_err(),
+            "begin_cron_loop must not return on its own"
+        );
     }
 }
