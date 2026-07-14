@@ -99,7 +99,11 @@ mod tests {
         let file_path = file_path.to_string_lossy();
         assert!(path_exists(&file_path));
         assert!(!path_exists(
-            temp_dir.path().join("missing.txt").to_string_lossy().as_ref()
+            temp_dir
+                .path()
+                .join("missing.txt")
+                .to_string_lossy()
+                .as_ref()
         ));
 
         let url = Url::parse("https://example.com/path/to/archive.tar.gz")?;

@@ -529,7 +529,10 @@ mod tests {
         };
 
         let resolved = options.resolve(false).unwrap();
-        assert!(matches!(resolved.launch_mode, gsm_instance::config::LaunchMode::Wine));
+        assert!(matches!(
+            resolved.launch_mode,
+            gsm_instance::config::LaunchMode::Wine
+        ));
 
         unsafe {
             env::remove_var("APP_ID");

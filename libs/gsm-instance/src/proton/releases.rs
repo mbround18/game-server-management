@@ -118,8 +118,7 @@ mod tests {
 
     #[test]
     fn release_error_json_displays_correctly() {
-        let json_err = serde_json::from_str::<serde_json::Value>("invalid json {{")
-            .unwrap_err();
+        let json_err = serde_json::from_str::<serde_json::Value>("invalid json {{").unwrap_err();
         let err = ReleaseError::Json(json_err);
         assert!(err.to_string().starts_with("Failed to parse JSON:"));
     }

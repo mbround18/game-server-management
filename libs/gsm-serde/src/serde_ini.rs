@@ -428,10 +428,7 @@ NightTimeSpeedRate=0.8,\n\
             Value::String("SomeString".to_owned())
         );
         // Empty quoted string
-        assert_eq!(
-            parse_ini_value("\"\""),
-            Value::String(String::new())
-        );
+        assert_eq!(parse_ini_value("\"\""), Value::String(String::new()));
         // Whitespace trimmed
         assert_eq!(parse_ini_value("  42  "), Value::Number(42.into()));
     }

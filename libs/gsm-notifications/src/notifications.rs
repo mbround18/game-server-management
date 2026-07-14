@@ -81,21 +81,23 @@ mod tests {
 
     #[test]
     fn returns_ok_when_webhook_url_not_set() {
-        let _guard = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe { std::env::remove_var("WEBHOOK_URL") };
 
         assert!(send_notifications(StandardServerEvents::Started).is_ok());
         assert!(send_notifications(StandardServerEvents::Stopping).is_ok());
         assert!(send_notifications(StandardServerEvents::Stopped).is_ok());
-        assert!(
-            send_notifications(StandardServerEvents::PlayerJoined("Alice".to_owned())).is_ok()
-        );
+        assert!(send_notifications(StandardServerEvents::PlayerJoined("Alice".to_owned())).is_ok());
         assert!(send_notifications(StandardServerEvents::PlayerLeft("Alice".to_owned())).is_ok());
     }
 
     #[test]
     fn returns_err_when_webhook_url_is_invalid() {
-        let _guard = env_lock().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         unsafe { std::env::set_var("WEBHOOK_URL", "not-a-url") };
 
         let result = send_notifications(StandardServerEvents::Started);

@@ -49,8 +49,7 @@ mod tests {
     #[tokio::test]
     async fn begin_cron_loop_runs_indefinitely_until_cancelled() {
         // The loop never terminates on its own; a short timeout proves it is running.
-        let result =
-            tokio::time::timeout(Duration::from_millis(50), begin_cron_loop()).await;
+        let result = tokio::time::timeout(Duration::from_millis(50), begin_cron_loop()).await;
         assert!(
             result.is_err(),
             "begin_cron_loop must not return on its own"

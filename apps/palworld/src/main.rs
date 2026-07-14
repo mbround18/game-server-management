@@ -65,7 +65,10 @@ async fn main() {
                 args.push(format!("-port={public_port}"));
             }
 
-            if let Some(public_port) = env::var("PUBLIC_PORT").ok().or_else(|| Some("8211".to_owned())) {
+            if let Some(public_port) = env::var("PUBLIC_PORT")
+                .ok()
+                .or_else(|| Some("8211".to_owned()))
+            {
                 args.push(format!("-publicport={public_port}"));
             }
 

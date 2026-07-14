@@ -255,7 +255,8 @@ async fn main() {
             if let Err(e) = inst.stop() {
                 error!("Failed to stop: {}", e);
             } else {
-                if webhook_enabled && let Err(e) = send_notifications(StandardServerEvents::Stopped) {
+                if webhook_enabled && let Err(e) = send_notifications(StandardServerEvents::Stopped)
+                {
                     warn!("Failed to send webhook notification: {e}");
                 }
                 debug!("Server stopped successfully.");

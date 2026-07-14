@@ -8,8 +8,7 @@ static JOINED_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 #[allow(clippy::expect_used)]
 static LEFT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"Remove Entity for Player\s+'([^']+)'")
-        .expect("left-player regex should compile")
+    Regex::new(r"Remove Entity for Player\s+'([^']+)'").expect("left-player regex should compile")
 });
 
 /// Extracts the player name from a log line.
@@ -56,17 +55,17 @@ mod tests {
 
     #[test]
     fn joined_returns_none_when_pattern_absent() {
-        assert_eq!(extract_player_joined_name("[server] Some other log line"), None);
+        assert_eq!(
+            extract_player_joined_name("[server] Some other log line"),
+            None
+        );
         assert_eq!(extract_player_joined_name(""), None);
     }
 
     #[test]
     fn left_extracts_name_from_log_line() {
         let log = "[server] Remove Entity for Player 'mbround18'";
-        assert_eq!(
-            extract_player_left_name(log),
-            Some("mbround18".to_owned())
-        );
+        assert_eq!(extract_player_left_name(log), Some("mbround18".to_owned()));
     }
 
     #[test]

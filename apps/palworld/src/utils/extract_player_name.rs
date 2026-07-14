@@ -3,8 +3,7 @@ use std::sync::LazyLock;
 
 #[allow(clippy::expect_used)]
 static JOINED_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[LOG\]\s+(\w+)\s+joined the server")
-        .expect("joined-player regex should compile")
+    Regex::new(r"\[LOG\]\s+(\w+)\s+joined the server").expect("joined-player regex should compile")
 });
 
 #[allow(clippy::expect_used)]
@@ -47,17 +46,17 @@ mod tests {
 
     #[test]
     fn joined_returns_none_when_pattern_absent() {
-        assert_eq!(extract_player_joined_name("[server] Some other log line"), None);
+        assert_eq!(
+            extract_player_joined_name("[server] Some other log line"),
+            None
+        );
         assert_eq!(extract_player_joined_name(""), None);
     }
 
     #[test]
     fn left_extracts_name_from_log_line() {
         let log = "[2024.01.01-00.00.00:000][  0]LogNet: [LOG] mbround18 left the server";
-        assert_eq!(
-            extract_player_left_name(log),
-            Some("mbround18".to_owned())
-        );
+        assert_eq!(extract_player_left_name(log), Some("mbround18".to_owned()));
     }
 
     #[test]

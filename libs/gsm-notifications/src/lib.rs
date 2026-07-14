@@ -265,7 +265,11 @@ pub fn send_notification<T: Serialize>(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::unreadable_literal)]
+    #![allow(
+        clippy::unwrap_used,
+        clippy::indexing_slicing,
+        clippy::unreadable_literal
+    )]
 
     use super::*;
     use serde_json::json;
