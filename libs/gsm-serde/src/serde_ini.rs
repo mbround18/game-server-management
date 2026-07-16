@@ -53,26 +53,49 @@ fn format_json_value(value: &serde_json::Value) -> String {
     }
 }
 
-fn serialize_value(value: &serde_json::Value, indent: usize) -> String {
+/// Serializes a JSON object into INI body text.
+///
+/// In `compact` mode, entries are joined on a single line with commas and no
+/// trailing comma after the last entry in each object — some game engines
+/// (e.g. Palworld's `PalWorldSettings.ini`) fail to parse a multi-line
+/// `OptionSettings=(...)` block and require it on one line. Non-compact mode
+/// keeps the original indented, one-entry-per-line, trailing-comma format
+/// intended for human-readable display.
+fn serialize_value(value: &serde_json::Value, indent: usize, compact: bool) -> String {
     let mut output = String::new();
-    let indent_str = "\t".repeat(indent);
+    let indent_str = if compact { String::new() } else { "\t".repeat(indent) };
     if let serde_json::Value::Object(map) = value {
         // Collect and sort keys alphabetically.
         let mut entries: Vec<_> = map.iter().collect();
         entries.sort_by_key(|(a, _)| *a);
-        for (key, val) in entries {
+        let entry_count = entries.len();
+        for (i, (key, val)) in entries.into_iter().enumerate() {
+            let is_last = i + 1 == entry_count;
             output.push_str(&indent_str);
             output.push_str(key);
+            output.push('=');
             if let serde_json::Value::Object(_) = val {
                 // Start a new nested block.
-                output.push_str("=(\n");
-                output.push_str(&serialize_value(val, indent + 1));
+                output.push('(');
+                if !compact {
+                    output.push('\n');
+                }
+                output.push_str(&serialize_value(val, indent + 1, compact));
                 output.push_str(&indent_str);
-                output.push_str(")\n");
+                output.push(')');
+                if !compact {
+                    output.push('\n');
+                } else if !is_last {
+                    output.push(',');
+                }
             } else {
-                output.push('=');
                 output.push_str(&format_json_value(val));
-                output.push_str(",\n");
+                if !compact || !is_last {
+                    output.push(',');
+                }
+                if !compact {
+                    output.push('\n');
+                }
             }
         }
     } else {
@@ -185,11 +208,62 @@ pub fn to_string<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_js
                     // For nested objects, use the recursive helper with indent level 1.
                     output.push_str(&key);
                     output.push_str("=(\n");
-                    output.push_str(&serialize_value(&val, 1));
+                    output.push_str(&serialize_value(&val, 1, false));
                     output.push_str(")\n");
                 }
                 _ => {
                     let _ = writeln!(output, "{key}={},", format_json_value(&val));
+                }
+            }
+        }
+    }
+
+    Ok(output)
+}
+
+/// Serializes a struct into a single-line INI-formatted string.
+///
+/// Identical to [`to_string`] except that nested object blocks (e.g.
+/// `OptionSettings=(...)`) are written on one line with no trailing comma
+/// before the closing `)`. Some game engines' config parsers — Palworld's
+/// `PalWorldSettings.ini` among them — only accept the block in this form
+/// and fail to parse a multi-line, indented version.
+///
+/// # Errors
+///
+/// Returns an error when `serde_json` conversion of `value` fails.
+pub fn to_string_compact<T: Serialize + IniHeader>(value: &T) -> Result<String, serde_json::Error> {
+    let mut output = String::new();
+
+    let section = T::ini_header();
+    output.push('[');
+    output.push_str(section);
+    output.push_str("]\n");
+
+    let serialized = serde_json::to_value(value)?;
+    if let serde_json::Value::Object(map) = serialized {
+        let mut entries: Vec<(String, serde_json::Value)> = map.into_iter().collect();
+        entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+        let entry_count = entries.len();
+        for (i, (key, val)) in entries.into_iter().enumerate() {
+            let is_last = i + 1 == entry_count;
+            match val {
+                serde_json::Value::Object(_) => {
+                    output.push_str(&key);
+                    output.push_str("=(");
+                    output.push_str(&serialize_value(&val, 0, true));
+                    output.push(')');
+                    if !is_last {
+                        output.push(',');
+                    }
+                    output.push('\n');
+                }
+                _ => {
+                    let _ = write!(output, "{key}={}", format_json_value(&val));
+                    if !is_last {
+                        output.push(',');
+                    }
+                    output.push('\n');
                 }
             }
         }
@@ -379,6 +453,22 @@ OptionSettings=(\n\
 \tDifficulty=\"Hard\",\n\
 \tNightTimeSpeedRate=0.8,\n\
 )\n";
+        assert_eq!(ini_string, expected_ini);
+    }
+
+    #[test]
+    fn to_string_compact_serializes_nested_struct_on_one_line() {
+        let settings = GameSettings {
+            option_settings: OptionSettings {
+                difficulty: "Hard".to_owned(),
+                day_time_speed_rate: 1.5,
+                night_time_speed_rate: 0.8,
+            },
+        };
+
+        let ini_string = to_string_compact(&settings).unwrap();
+        let expected_ini = "[/Script/Pal.PalGameWorldSettings]\n\
+OptionSettings=(DayTimeSpeedRate=1.5,Difficulty=\"Hard\",NightTimeSpeedRate=0.8)\n";
         assert_eq!(ini_string, expected_ini);
     }
 
