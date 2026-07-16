@@ -28,12 +28,31 @@ extern crate proc_macro;
 /// // Example 2: Parse a String value.
 /// let server_name = env_parse!("SERVER_NAME", String::from("localhost"), String);
 /// ```
+/// Strips a single matching pair of wrapping double or single quotes, if present.
+///
+/// Compose/shell default-value syntax like `${VAR:-"value"}` does not strip
+/// quotes the way an interactive shell would, so a value's literal quote
+/// characters commonly leak into the container's environment.
+#[doc(hidden)]
+pub fn __strip_wrapping_quotes(value: &str) -> &str {
+    let trimmed = value.trim();
+    for quote in ['"', '\''] {
+        if let Some(inner) = trimmed
+            .strip_prefix(quote)
+            .and_then(|rest| rest.strip_suffix(quote))
+        {
+            return inner;
+        }
+    }
+    trimmed
+}
+
 #[macro_export]
 macro_rules! env_parse {
     ($env_var:expr, $default:expr, $t:ty) => {
         std::env::var($env_var)
             .ok()
-            .and_then(|s| s.parse::<$t>().ok())
+            .and_then(|s| $crate::__strip_wrapping_quotes(&s).parse::<$t>().ok())
             .unwrap_or($default)
     };
 }
@@ -94,6 +113,46 @@ mod tests {
 
         unsafe {
             std::env::remove_var("ENV_PARSE_INVALID_VALUE");
+        }
+    }
+
+    #[test]
+    fn strips_wrapping_quotes_before_parsing_numeric_values() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            std::env::set_var("ENV_PARSE_QUOTED_NUMERIC_VALUE", "\"99\"");
+        }
+
+        let value = env_parse!("ENV_PARSE_QUOTED_NUMERIC_VALUE", 7_u32, u32);
+        assert_eq!(value, 99);
+
+        unsafe {
+            std::env::remove_var("ENV_PARSE_QUOTED_NUMERIC_VALUE");
+        }
+    }
+
+    #[test]
+    fn strips_wrapping_quotes_before_parsing_string_values() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        unsafe {
+            std::env::set_var("ENV_PARSE_QUOTED_STRING_VALUE", "\"server-name\"");
+        }
+
+        let value = env_parse!(
+            "ENV_PARSE_QUOTED_STRING_VALUE",
+            String::from("fallback"),
+            String
+        );
+        assert_eq!(value, "server-name");
+
+        unsafe {
+            std::env::remove_var("ENV_PARSE_QUOTED_STRING_VALUE");
         }
     }
 

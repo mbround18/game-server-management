@@ -29,44 +29,43 @@ pub enum StandardServerEvents {
 /// transport, or webhook response status checks.
 pub fn send_notifications(event: StandardServerEvents) -> Result<(), NotificationError> {
     let server_name = fetch_var("NAME", "My Server");
-    std::env::var("WEBHOOK_URL").map_or_else(
-        |_| {
-            debug!("Skipping notification, WEBHOOK_URL is not present.");
-            Ok(())
-        },
-        |webhook_url| match event {
-            StandardServerEvents::PlayerJoined(name) => send_notification::<Option<String>>(
-                &webhook_url,
-                &format!("{server_name}: Player Joined"),
-                &format!("Player {name} has joined the adventure!"),
-                None,
-            ),
-            StandardServerEvents::PlayerLeft(name) => send_notification::<Option<String>>(
-                &webhook_url,
-                &format!("{server_name}: Player Left"),
-                &format!("Player {name} has left the adventure."),
-                None,
-            ),
-            StandardServerEvents::Started => send_notification::<Option<String>>(
-                &webhook_url,
-                &format!("{server_name}: Server Started"),
-                "The server has started successfully.",
-                None,
-            ),
-            StandardServerEvents::Stopping => send_notification::<Option<String>>(
-                &webhook_url,
-                &format!("{server_name}: Server Stopping"),
-                "The server is shutting down gracefully.",
-                None,
-            ),
-            StandardServerEvents::Stopped => send_notification::<Option<String>>(
-                &webhook_url,
-                &format!("{server_name}: Server Stopped"),
-                "The server has been stopped.",
-                None,
-            ),
-        },
-    )
+    let webhook_url = fetch_var("WEBHOOK_URL", "");
+    if webhook_url.is_empty() {
+        debug!("Skipping notification, WEBHOOK_URL is not present.");
+        return Ok(());
+    }
+    match event {
+        StandardServerEvents::PlayerJoined(name) => send_notification::<Option<String>>(
+            &webhook_url,
+            &format!("{server_name}: Player Joined"),
+            &format!("Player {name} has joined the adventure!"),
+            None,
+        ),
+        StandardServerEvents::PlayerLeft(name) => send_notification::<Option<String>>(
+            &webhook_url,
+            &format!("{server_name}: Player Left"),
+            &format!("Player {name} has left the adventure."),
+            None,
+        ),
+        StandardServerEvents::Started => send_notification::<Option<String>>(
+            &webhook_url,
+            &format!("{server_name}: Server Started"),
+            "The server has started successfully.",
+            None,
+        ),
+        StandardServerEvents::Stopping => send_notification::<Option<String>>(
+            &webhook_url,
+            &format!("{server_name}: Server Stopping"),
+            "The server is shutting down gracefully.",
+            None,
+        ),
+        StandardServerEvents::Stopped => send_notification::<Option<String>>(
+            &webhook_url,
+            &format!("{server_name}: Server Stopped"),
+            "The server has been stopped.",
+            None,
+        ),
+    }
 }
 
 #[cfg(test)]

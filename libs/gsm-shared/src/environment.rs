@@ -2,10 +2,31 @@ use crate::parse_truthy;
 use cached::macros::cached;
 use std::env;
 
+/// Strips a single matching pair of wrapping double or single quotes, if present.
+///
+/// Compose/shell default-value syntax like `${VAR:-"value"}` does not strip
+/// quotes the way an interactive shell would, so a value's literal quote
+/// characters commonly leak into the container's environment. Stripping them
+/// here means callers don't each need to guard against it separately.
+fn strip_wrapping_quotes(value: &str) -> &str {
+    let trimmed = value.trim();
+    for quote in ['"', '\''] {
+        if let Some(inner) = trimmed
+            .strip_prefix(quote)
+            .and_then(|rest| rest.strip_suffix(quote))
+        {
+            return inner;
+        }
+    }
+    trimmed
+}
+
 /// Fetches an environment variable, returning `default` if not set or empty.
 pub fn fetch_var(name: &str, default: &str) -> String {
     match env::var(name) {
-        Ok(value) if !value.is_empty() => value,
+        Ok(value) if !strip_wrapping_quotes(&value).is_empty() => {
+            strip_wrapping_quotes(&value).to_owned()
+        }
         _ => default.to_owned(),
     }
 }
@@ -56,6 +77,32 @@ mod tests {
         }
         let result = fetch_var(key, "default");
         assert_eq!(result, "default");
+    }
+
+    #[test]
+    fn test_fetch_var_strips_wrapping_quotes() {
+        let key = "TEST_FETCH_VAR_STRIPS_WRAPPING_QUOTES";
+        unsafe {
+            env::set_var(key, "\"quoted-value\"");
+        }
+        let result = fetch_var(key, "default");
+        assert_eq!(result, "quoted-value");
+        unsafe {
+            env::remove_var(key);
+        }
+    }
+
+    #[test]
+    fn test_fetch_var_quotes_only_falls_back_to_default() {
+        let key = "TEST_FETCH_VAR_QUOTES_ONLY";
+        unsafe {
+            env::set_var(key, "\"\"");
+        }
+        let result = fetch_var(key, "default");
+        assert_eq!(result, "default");
+        unsafe {
+            env::remove_var(key);
+        }
     }
 
     #[test]
