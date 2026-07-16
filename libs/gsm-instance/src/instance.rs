@@ -1,10 +1,11 @@
 use crate::config::InstanceConfig;
 use crate::errors::InstanceError;
 use crate::process::send_interrupt_to_pid;
-use crate::{install, shutdown, startup, update};
+use crate::{install, startup, update};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Child; // Using synchronous std process Child
+use tracing::warn;
 
 /// The main struct representing a game server instance.
 ///
@@ -108,6 +109,13 @@ impl Instance {
 
     /// Stops the server gracefully.
     ///
+    /// Without a pid file we have no reliable way to identify which running
+    /// process is "the server" — falling back to a fuzzy name match against
+    /// `config.command` (e.g. `/bin/bash` for scripted launches) can match
+    /// unrelated processes, including the caller's own parent shell. So if
+    /// the pid file is missing, this is treated as already-stopped rather
+    /// than guessing.
+    ///
     /// # Errors
     ///
     /// Returns an error when the pid file cannot be removed after signalling the process.
@@ -116,11 +124,7 @@ impl Instance {
             send_interrupt_to_pid(pid);
             fs::remove_file(self.config.pid_file()).map_err(InstanceError::IoError)?;
         } else {
-            let file_name = std::path::Path::new(&self.config.command)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or(self.config.command.as_str());
-            shutdown::blocking_shutdown(file_name);
+            warn!("No pid file found; assuming server is already stopped.");
         }
         Ok(())
     }
