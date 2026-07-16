@@ -377,6 +377,7 @@ mod tests {
             launch_mode,
             working_dir: path,
             force_windows: false,
+            skip_validate: false,
         }
     }
 
@@ -521,6 +522,7 @@ mod tests {
             launch_mode: LaunchMode::Proton,
             working_dir: temp_home.join("server"),
             force_windows: false,
+            skip_validate: false,
         };
 
         let command = launch_server(&config).unwrap();
@@ -567,6 +569,7 @@ mod tests {
             launch_mode: LaunchMode::Proton,
             working_dir: temp_home.join("server"),
             force_windows: false,
+            skip_validate: false,
         };
 
         let error = launch_server(&config).unwrap_err();

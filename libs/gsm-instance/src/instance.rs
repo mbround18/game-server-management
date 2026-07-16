@@ -51,6 +51,7 @@ impl Instance {
             self.config.app_id,
             &self.config.working_dir,
             self.config.force_windows,
+            self.config.skip_validate,
             &self.config.install_args,
         )
         .map_err(|e| InstanceError::CommandExecutionError(e.to_string()))?;

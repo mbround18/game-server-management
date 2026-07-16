@@ -41,6 +41,7 @@ pub enum LaunchMode {
 ///     install_args: vec!["+beta".to_string(), "preview".to_string()],
 ///     launch_args: vec!["-nographics".to_string(), "-batchmode".to_string()],
 ///     force_windows: true,
+///     skip_validate: false,
 ///     working_dir: PathBuf::from("/home/steam/myserver"),
 ///     launch_mode: LaunchMode::Proton,
 /// };
@@ -64,6 +65,10 @@ pub struct InstanceConfig {
     /// If `true`, forces the installation and launch of the Windows version of the game
     /// server, typically for use with Wine or Proton on Linux.
     pub force_windows: bool,
+    /// If `true`, skips SteamCMD's `validate` step during install/update, trusting the
+    /// existing files as-is. Speeds up restarts of an already-installed server at the
+    /// cost of not re-checking for local corruption.
+    pub skip_validate: bool,
     /// The working directory where the server will be installed and run. All server-related
     /// files, logs, and the PID file will be stored here.
     pub working_dir: PathBuf,
@@ -84,6 +89,7 @@ impl Default for InstanceConfig {
             install_args: Vec::new(),
             launch_args: Vec::new(),
             force_windows: false,
+            skip_validate: false,
             working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             launch_mode: LaunchMode::Native,
         }
@@ -131,6 +137,7 @@ mod tests {
         assert!(config.install_args.is_empty());
         assert!(config.launch_args.is_empty());
         assert!(!config.force_windows);
+        assert!(!config.skip_validate);
         assert!(matches!(config.launch_mode, LaunchMode::Native));
     }
 
@@ -157,6 +164,7 @@ mod tests {
             install_args: vec![String::from("+beta"), String::from("staging")],
             launch_args: vec![String::from("-log"), String::from("-port=27015")],
             force_windows: true,
+            skip_validate: true,
             working_dir: std::path::PathBuf::from("/srv/server"),
             launch_mode: LaunchMode::Proton,
         };
@@ -171,6 +179,7 @@ mod tests {
         assert_eq!(deserialized.install_args, vec!["+beta", "staging"]);
         assert_eq!(deserialized.launch_args, vec!["-log", "-port=27015"]);
         assert!(deserialized.force_windows);
+        assert!(deserialized.skip_validate);
         assert_eq!(
             deserialized.working_dir,
             std::path::PathBuf::from("/srv/server")

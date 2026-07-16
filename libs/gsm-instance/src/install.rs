@@ -20,7 +20,7 @@
 //! let install_dir = Path::new("/home/steam/myserver");
 //! let extra_args = vec!["-beta".to_string(), "preview".to_string()];
 //!
-//! let status = install(app_id, install_dir, false, &extra_args)
+//! let status = install(app_id, install_dir, false, false, &extra_args)
 //!     .expect("Installation failed");
 //!
 //! assert!(status.success());
@@ -59,6 +59,9 @@ fn add_additional_args(args: &mut Vec<String>) {
 /// - `install_dir`: The directory where the server should be installed.
 /// - `force_windows`: If `true`, configures SteamCMD to download the Windows version of
 ///   the server, which is necessary for running with Wine or Proton.
+/// - `skip_validate`: If `true`, omits SteamCMD's `validate` flag from `app_update`, so
+///   existing files are trusted as-is instead of being re-checksummed. Useful for fast
+///   restarts once a server is known-good, since validation can take a long time.
 /// - `extra_args`: A slice of extra arguments to append to the SteamCMD command, which
 ///   can be used for things like specifying a beta branch.
 ///
@@ -84,6 +87,7 @@ pub fn install<P: AsRef<Path>>(
     app_id: u32,
     install_dir: P,
     force_windows: bool,
+    skip_validate: bool,
     extra_args: &[String],
 ) -> io::Result<ExitStatus> {
     info!(
@@ -95,7 +99,11 @@ pub fn install<P: AsRef<Path>>(
     // Base SteamCMD arguments.
     let login = "+login anonymous".to_owned();
     let force_install_dir = format!("+force_install_dir {}", install_dir.as_ref().display());
-    let app_update = format!("+app_update {app_id} validate");
+    let app_update = if skip_validate {
+        format!("+app_update {app_id}")
+    } else {
+        format!("+app_update {app_id} validate")
+    };
 
     // Start building the argument list.
     let mut args = vec![force_install_dir, login, app_update];
@@ -213,7 +221,7 @@ mod tests {
         }
 
         let extra_args = vec![String::from("+download_depot 123 456")];
-        let status = install(2_278_520, temp_dir.path(), true, &extra_args).unwrap();
+        let status = install(2_278_520, temp_dir.path(), true, false, &extra_args).unwrap();
         assert!(status.success());
 
         let recorded_args = fs::read_to_string(&args_path).unwrap();
@@ -237,6 +245,37 @@ mod tests {
         unsafe {
             std::env::remove_var("STEAMCMD_PATH");
             std::env::remove_var("ADDITIONAL_STEAMCMD_ARGS");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_omits_validate_when_skip_validate_is_true() {
+        let _lock = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let temp_dir = tempdir().unwrap();
+        let args_path = temp_dir.path().join("args.txt");
+        let script_path = temp_dir.path().join("fake-steamcmd.sh");
+        let script = format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\nexit 0\n",
+            args_path.display()
+        );
+        write_executable_script(&script_path, &script);
+
+        unsafe {
+            std::env::set_var("STEAMCMD_PATH", &script_path);
+        }
+
+        let status = install(2_278_520, temp_dir.path(), false, true, &[]).unwrap();
+        assert!(status.success());
+
+        let recorded_args = fs::read_to_string(&args_path).unwrap();
+        let lines: Vec<&str> = recorded_args.lines().collect();
+        assert_eq!(lines.get(2).copied(), Some("+app_update 2278520"));
+
+        unsafe {
+            std::env::remove_var("STEAMCMD_PATH");
         }
     }
 }
