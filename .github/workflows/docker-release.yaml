@@ -15,21 +15,24 @@ on:
 permissions:
   contents: read
   packages: write
-  pages: write
-  id-token: write
 
 jobs:
   rust:
-    uses: mbround18/gh-reusable/.github/workflows/rust-build-n-test.yaml@main
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    runs-on: ubuntu-latest
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
+
+      - name: Install paws
+        uses: mbround18/paws/actions/paws-up@1315105b98074f2dbde6b16615d1219dbfe4a0f6 # v0.0.1-prerelease.36, https://github.com/mbround18/paws/releases/latest
+
+      - name: Rust CI (build, test, clippy, rustfmt)
+        run: paws ci --toolchain rust
 
   publish-crates:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    uses: mbround18/gh-reusable/.github/workflows/publish.yaml@main
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -44,12 +47,17 @@ jobs:
           - libs/gsm-mod-manager
           - libs/gsm-notifications
           - libs/gsm-serde
-    with:
-      target: rust-crate
-      source: ${{ matrix.source }}
-      registry: crates.io
-    secrets:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
+
+      - name: Install paws
+        uses: mbround18/paws/actions/paws-up@1315105b98074f2dbde6b16615d1219dbfe4a0f6 # v0.0.1-prerelease.36, https://github.com/mbround18/paws/releases/latest
+
+      - name: Publish crate
+        run: paws publish --target rust-crate --source ${{ matrix.source }} --registry crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
   docker-compose:
     needs:
