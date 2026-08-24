@@ -63,7 +63,11 @@ fn format_json_value(value: &serde_json::Value) -> String {
 /// intended for human-readable display.
 fn serialize_value(value: &serde_json::Value, indent: usize, compact: bool) -> String {
     let mut output = String::new();
-    let indent_str = if compact { String::new() } else { "\t".repeat(indent) };
+    let indent_str = if compact {
+        String::new()
+    } else {
+        "\t".repeat(indent)
+    };
     if let serde_json::Value::Object(map) = value {
         // Collect and sort keys alphabetically.
         let mut entries: Vec<_> = map.iter().collect();
