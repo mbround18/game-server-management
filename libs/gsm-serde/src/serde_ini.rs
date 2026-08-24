@@ -247,25 +247,18 @@ pub fn to_string_compact<T: Serialize + IniHeader>(value: &T) -> Result<String, 
         let entry_count = entries.len();
         for (i, (key, val)) in entries.into_iter().enumerate() {
             let is_last = i + 1 == entry_count;
-            match val {
-                serde_json::Value::Object(_) => {
-                    output.push_str(&key);
-                    output.push_str("=(");
-                    output.push_str(&serialize_value(&val, 0, true));
-                    output.push(')');
-                    if !is_last {
-                        output.push(',');
-                    }
-                    output.push('\n');
-                }
-                _ => {
-                    let _ = write!(output, "{key}={}", format_json_value(&val));
-                    if !is_last {
-                        output.push(',');
-                    }
-                    output.push('\n');
-                }
+            if let serde_json::Value::Object(_) = val {
+                output.push_str(&key);
+                output.push_str("=(");
+                output.push_str(&serialize_value(&val, 0, true));
+                output.push(')');
+            } else {
+                let _ = write!(output, "{key}={}", format_json_value(&val));
             }
+            if !is_last {
+                output.push(',');
+            }
+            output.push('\n');
         }
     }
 

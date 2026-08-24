@@ -168,6 +168,7 @@ impl ResolvedOptions {
             force_windows: self.force_windows,
             working_dir: self.install_path,
             launch_mode: self.launch_mode,
+            skip_validate: false,
         }
     }
 }

@@ -87,6 +87,7 @@ async fn main() {
         force_windows: false,
         launch_mode: gsm_instance::config::LaunchMode::Native,
         working_dir: PathBuf::from("/home/steam/palworld"),
+        skip_validate: false,
     };
     debug!("Instance configuration set: {:?}", instance_config);
 

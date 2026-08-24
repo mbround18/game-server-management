@@ -81,6 +81,7 @@ async fn main() {
         force_windows: true,
         working_dir: PathBuf::from("/home/steam/enshrouded"),
         launch_mode: gsm_instance::config::LaunchMode::Wine,
+        skip_validate: false,
     };
     debug!("Instance configuration set: {:?}", instance_config);
 
