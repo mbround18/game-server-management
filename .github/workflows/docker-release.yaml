@@ -36,10 +36,11 @@ jobs:
     strategy:
       # crates.io needs a path-dependency's crate to already be published
       # before a dependent can publish against it, so this list is ordered
-      # leaves-first (gsm-shared/ini-derive before gsm-cron/gsm-mod-manager/
-      # gsm-notifications/gsm-serde, which depend on them). max-parallel: 1
-      # makes the matrix walk that order instead of firing every publish at
-      # once, which also avoids slamming crates.io's new-crate rate limit.
+      # leaves-first (gsm-shared/gsm-serde-derive before gsm-cron/
+      # gsm-mod-manager/gsm-notifications/gsm-serde, which depend on them).
+      # max-parallel: 1 makes the matrix walk that order instead of firing
+      # every publish at once, which also avoids slamming crates.io's
+      # new-crate rate limit.
       fail-fast: true
       max-parallel: 1
       matrix:
@@ -61,7 +62,28 @@ jobs:
       - name: Install paws
         uses: mbround18/paws/actions/paws-up@1315105b98074f2dbde6b16615d1219dbfe4a0f6 # v0.0.1-prerelease.36, https://github.com/mbround18/paws/releases/latest
 
+      # crates.io rate-limits new-crate publishes hard enough that a first
+      # bulk publish of this many crates can span multiple re-runs of this
+      # workflow. cargo publish hard-errors on a version that's already
+      # live, so without this check a re-run would fail immediately on
+      # whatever already landed instead of picking up where it left off.
+      - name: Check if already published
+        id: check
+        run: |
+          set -euo pipefail
+          name=$(awk -F'"' '/^name/ { print $2; exit }' "${{ matrix.source }}/Cargo.toml")
+          version=$(awk -F'"' '/^version/ { print $2; exit }' "${{ matrix.source }}/Cargo.toml")
+          status=$(curl -s -H "User-Agent: game-server-management-ci (https://github.com/mbround18/game-server-management)" \
+            -o /dev/null -w '%{http_code}' "https://crates.io/api/v1/crates/${name}/${version}")
+          if [ "$status" = "200" ]; then
+            echo "already published: ${name}@${version}"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish crate
+        if: steps.check.outputs.published != 'true'
         run: paws publish --target rust-crate --source ${{ matrix.source }} --registry crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
