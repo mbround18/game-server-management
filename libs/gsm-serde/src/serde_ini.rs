@@ -3,7 +3,7 @@ use std::fmt::Write;
 
 /// Trait for types that require a custom INI header.
 ///
-/// The procedural macro from the `ini-derive` crate will automatically implement this trait
+/// The procedural macro from the `gsm-serde-derive` crate will automatically implement this trait
 /// based on the `#[INIHeader(name = "...")]` attribute.
 ///
 /// # Example
@@ -411,7 +411,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use super::*;
-    use ini_derive::IniSerialize;
+    use gsm_serde_derive::IniSerialize;
     use serde::{Deserialize, Serialize};
 
     // Define the nested configuration.

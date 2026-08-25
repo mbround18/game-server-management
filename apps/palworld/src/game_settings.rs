@@ -1,6 +1,6 @@
 use env_parse::env_parse;
 use gsm_serde::serde_ini::{IniHeader, to_string};
-use ini_derive::IniSerialize;
+use gsm_serde_derive::IniSerialize;
 use serde::{Deserialize, Serialize};
 use std::fs::create_dir_all;
 use std::path::Path;
