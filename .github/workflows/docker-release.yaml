@@ -34,7 +34,14 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      # crates.io needs a path-dependency's crate to already be published
+      # before a dependent can publish against it, so this list is ordered
+      # leaves-first (gsm-shared/ini-derive before gsm-cron/gsm-mod-manager/
+      # gsm-notifications/gsm-serde, which depend on them). max-parallel: 1
+      # makes the matrix walk that order instead of firing every publish at
+      # once, which also avoids slamming crates.io's new-crate rate limit.
+      fail-fast: true
+      max-parallel: 1
       matrix:
         source:
           - libs/env-parse
