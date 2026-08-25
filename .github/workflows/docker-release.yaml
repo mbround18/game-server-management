@@ -49,7 +49,7 @@ jobs:
           - libs/gsm-instance
           - libs/gsm-monitor
           - libs/gsm-shared
-          - libs/ini-derive
+          - libs/gsm-serde-derive
           - libs/gsm-cron
           - libs/gsm-mod-manager
           - libs/gsm-notifications
