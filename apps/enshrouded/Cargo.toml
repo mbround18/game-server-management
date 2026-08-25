@@ -1,8 +1,13 @@
 [package]
 name = "enshrouded"
 version = "0.1.1"
-edition = "2024"
-repository = "https://github.com/mbround18/enshrouded-docker"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/enshrouded/index.html"
+description = "Dockerized Enshrouded dedicated server launcher built on the Game Server Management (GSM) toolkit."
 
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }

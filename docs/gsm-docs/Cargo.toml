@@ -1,7 +1,13 @@
 [package]
 name = "gsm-docs"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/gsm_docs/index.html"
+description = "Internal crate that aggregates rustdoc for the Game Server Management (GSM) workspace."
 
 [lib]
 name = "gsm_docs"

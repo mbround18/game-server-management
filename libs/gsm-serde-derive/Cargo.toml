@@ -1,7 +1,13 @@
 [package]
 name = "gsm-serde-derive"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/gsm_serde_derive/index.html"
+description = "Derive macro companion to gsm-serde: implements IniHeader via #[INIHeader(name = \"...\")]."
 
 
 [lib]
