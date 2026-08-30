@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
 
       - name: Install paws
-        uses: mbround18/paws/actions/paws-up@310100a9e34428908ec13d9a3d4debbb195c939e # v0.0.1-prerelease.37, https://github.com/mbround18/paws/releases/latest
+        uses: mbround18/paws/actions/paws-up@a607577266ee03b67ab9d688477140f9ce83775e # v0.0.1-prerelease.38, https://github.com/mbround18/paws/releases/latest
 
       - name: Rust CI (build, test, clippy, rustfmt)
         run: paws ci --toolchain rust
@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install paws
-        uses: mbround18/paws/actions/paws-up@310100a9e34428908ec13d9a3d4debbb195c939e # v0.0.1-prerelease.37, https://github.com/mbround18/paws/releases/latest
+        uses: mbround18/paws/actions/paws-up@a607577266ee03b67ab9d688477140f9ce83775e # v0.0.1-prerelease.38, https://github.com/mbround18/paws/releases/latest
 
       - name: Audit (semgrep + gitleaks)
         run: paws audit
