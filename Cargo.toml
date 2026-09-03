@@ -2,7 +2,12 @@
 members = ["libs/*", "apps/*", "tools/*", "docs/gsm-docs"]
 resolver = "3"
 
-
+[workspace.package]
+edition = "2024"
+license = "BSD-3-Clause"
+authors = ["Michael Bruno <michael.bruno1337@gmail.com>"]
+repository = "https://github.com/mbround18/game-server-management"
+homepage = "https://gsm.boop.ninja"
 
 [profile.release]
 opt-level = "z"         # Optimize for binary size (use "3" for performance)
