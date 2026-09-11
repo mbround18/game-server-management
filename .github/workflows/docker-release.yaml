@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
 
       - name: Install paws
-        uses: mbround18/paws/actions/paws-up@657df43f1e6407a7ce550c9d08bf1a2c456d8968 # v0.0.1-prerelease.44, https://github.com/mbround18/paws/releases/latest
+        uses: mbround18/paws/actions/paws-up@db90f9effc4809e154fb64687a36a35ceb6d9e19 # v0.0.1-prerelease.46, https://github.com/mbround18/paws/releases/latest
 
       - name: Rust CI (build, test, clippy, rustfmt)
         run: paws ci --toolchain rust
@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # de0fac2, https://github.com/actions/checkout/releases/latest
 
       - name: Install paws
-        uses: mbround18/paws/actions/paws-up@657df43f1e6407a7ce550c9d08bf1a2c456d8968 # v0.0.1-prerelease.44, https://github.com/mbround18/paws/releases/latest
+        uses: mbround18/paws/actions/paws-up@db90f9effc4809e154fb64687a36a35ceb6d9e19 # v0.0.1-prerelease.46, https://github.com/mbround18/paws/releases/latest
 
       # crates.io rate-limits new-crate publishes hard enough that a first
       # bulk publish of this many crates can span multiple re-runs of this
