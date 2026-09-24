@@ -1,7 +1,13 @@
 [package]
 name = "env-parser"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/env_parser/index.html"
+description = "Internal CLI that renders config templates from environment variables for the GSM Docker images."
 
 [[bin]]
 name = "env-parser"
