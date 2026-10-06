@@ -13,6 +13,53 @@ use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, trace};
 
+/// The `(device, inode)` pair identifying a file on disk, or `None` if it
+/// couldn't be read.
+///
+/// Used to tell "the log I have open" apart from "the log at this path", which
+/// stop being the same file the moment someone rotates it.
+fn file_id(file: &File) -> Option<(u64, u64)> {
+    use std::os::unix::fs::MetadataExt;
+    file.metadata().ok().map(|m| (m.dev(), m.ino()))
+}
+
+/// At EOF, decide whether the file we hold open is still the file we ought to
+/// be reading, and say why not.
+///
+/// Two different things can happen to a log underneath us:
+///
+/// - A writer truncates it in place. The open file then measures shorter than
+///   how far we've already read.
+/// - The file is renamed out of the way and a fresh one created at the same
+///   path. This is how a server that archives its own log on each boot
+///   rotates. An open descriptor follows the rename, so the file we hold never
+///   shrinks and never ends -- it just stops growing. Watching only for
+///   truncation, we would tail the archived copy forever and silently stop
+///   reporting anything the server logged after its first restart.
+fn rotation_reason(
+    reader: &mut BufReader<File>,
+    path: &Path,
+    watched: Option<(u64, u64)>,
+) -> Option<&'static str> {
+    if let Ok(metadata) = reader.get_ref().metadata()
+        && let Ok(current_pos) = reader.stream_position()
+        && metadata.len() < current_pos
+    {
+        return Some("was truncated");
+    }
+
+    // Compare against the path rather than the descriptor: a rotation leaves
+    // our descriptor perfectly readable and pointing at the wrong file.
+    if let Some(watched) = watched
+        && let Ok(current) = File::open(path).as_ref().map(file_id)
+        && current.is_some_and(|current| current != watched)
+    {
+        return Some("was rotated");
+    }
+
+    None
+}
+
 /// Represents a monitor that continuously reads a log file and processes its lines using provided rules.
 #[derive(Clone)]
 pub struct Monitor {
@@ -58,6 +105,8 @@ impl Monitor {
             }
         };
 
+        let mut watched = file_id(&file);
+
         let mut reader = BufReader::new(file);
         if let Err(e) = reader.seek(SeekFrom::End(0)) {
             error!("Failed to seek to end of {}: {}", path.display(), e);
@@ -68,17 +117,15 @@ impl Monitor {
             let mut line = String::new();
             match reader.read_line(&mut line) {
                 Ok(0) => {
-                    if let Ok(metadata) = reader.get_ref().metadata()
-                        && let Ok(current_pos) = reader.stream_position()
-                        && metadata.len() < current_pos
-                    {
+                    if let Some(reason) = rotation_reason(&mut reader, path, watched) {
                         info!(target: INSTANCE_TARGET,
-                            "Log file {} was truncated/rotated. Re-opening.",
+                            "Log file {} {reason}. Re-opening.",
                             path.display()
                         );
                         match File::open(path) {
                             Ok(new_file) => {
                                 trace!("Successfully reopened log file");
+                                watched = file_id(&new_file);
                                 reader = BufReader::new(new_file);
                                 if let Err(e) = reader.seek(SeekFrom::Start(0)) {
                                     error!("Failed to seek to start of {}: {}", path.display(), e);
@@ -149,6 +196,61 @@ mod tests {
     use std::fs;
     use std::sync::atomic::AtomicBool;
     use tempfile::tempdir;
+
+    /// Poll a flag until it is set, up to `timeout`. Returns whether it was.
+    ///
+    /// The monitor is a thread on a 100ms sleep, so a test can't assert on it
+    /// synchronously; waiting for the condition rather than sleeping a fixed
+    /// span keeps the result the same whether the machine is fast or loaded.
+    fn wait_for(flag: &AtomicBool, timeout: Duration) -> bool {
+        let deadline = std::time::Instant::now() + timeout;
+        while std::time::Instant::now() < deadline {
+            if flag.load(Ordering::SeqCst) {
+                return true;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        false
+    }
+
+    /// A server that archives its own log on boot renames the file and creates
+    /// a fresh one at the same path. Our descriptor follows the rename, so the
+    /// file we hold never shrinks -- it just stops growing -- and before this
+    /// was handled the monitor tailed the archived copy forever and went quiet
+    /// after the first restart.
+    #[test]
+    fn run_follows_a_log_that_was_renamed_and_recreated() {
+        let temp = tempdir().unwrap();
+        let log_path = temp.path().join("enshrouded_server.log");
+        fs::write(&log_path, "").unwrap();
+
+        let after_rotation = Arc::new(AtomicBool::new(false));
+        let rules = LogRules::new();
+        {
+            let after_rotation = Arc::clone(&after_rotation);
+            rules.add_rule(
+                |line| line.contains("AFTER_ROTATION"),
+                move |_| after_rotation.store(true, Ordering::SeqCst),
+                true,
+                None,
+            );
+        }
+
+        let monitor = Monitor::new(rules);
+        let watched = log_path.clone();
+        thread::spawn(move || monitor.run(&watched));
+        thread::sleep(Duration::from_millis(100));
+
+        // Rotate exactly the way the game does: move the old log aside, then
+        // start a new one at the original path.
+        fs::rename(&log_path, temp.path().join("enshrouded_server.old.log")).unwrap();
+        fs::write(&log_path, "a line containing AFTER_ROTATION\n").unwrap();
+
+        assert!(
+            wait_for(&after_rotation, Duration::from_secs(5)),
+            "monitor should have reopened the path and read the new file"
+        );
+    }
 
     #[test]
     fn monitor_new_creates_instance() {
