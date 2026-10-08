@@ -1,8 +1,13 @@
 [package]
 name = "gsm-cli"
 version = "0.1.0"
-edition = "2024"
-repository = "https://github.com/mbround18/game-server-management"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/gsm_cli/index.html"
+description = "Command-line interface for installing and managing generic SteamCMD-based game server instances."
 
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }
