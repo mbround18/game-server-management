@@ -1,7 +1,13 @@
 [package]
 name = "env-parse"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/env_parse/index.html"
+description = "A macro for parsing environment variables into a typed value, with a fallback default."
 
 [lib]
 path = "src/lib.rs"
