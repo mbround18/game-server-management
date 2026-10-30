@@ -1,7 +1,13 @@
 [package]
 name = "gsm-shared"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://gsm.boop.ninja/gsm_shared/index.html"
+description = "Shared utilities (environment/config helpers, path normalization, public IP lookup) used across the Game Server Management (GSM) workspace."
 
 [dependencies]
 serde = {version = "1",features = ["derive", "default"] }
