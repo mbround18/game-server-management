@@ -9,7 +9,7 @@ cron = "0"
 chrono = "0.4.45"
 tokio = { version = "1.52.4", features = ["macros", "rt", "time"] }
 gsm-shared = { path = "../gsm-shared", version = "0.1.0" }
-nix = { version = "0.31.3", features = ["signal"] }
+nix = { version = "0.32.0", features = ["signal"] }
 
 [lints]
 workspace = true
