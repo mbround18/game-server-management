@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.29
 
 # Define versions globally
-ARG RUST_VERSION=1.99
+ARG RUST_VERSION=1.100
 ARG DEBIAN_VERSION=13-slim
 
 # Stage 1: Base Image with development tools
